@@ -1,0 +1,1700 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>보험금매출 집계 · 매입매출전표 생성기</title>
+<style>
+:root{
+  --bg:#e9e7e2; --card:#fbfaf8; --card2:#ffffff; --line:#dedbd4; --line2:#e8e5df;
+  --ink:#26241f; --sub:#6f6c65; --accent:#c96442; --accent-soft:#f4ebe6;
+  --ok:#2f7d5d; --ok-bg:#eef4f0; --warn:#9a7208; --warn-bg:#fbf5e4;
+  --err:#b5392c; --err-bg:#fbecea; --new-bg:#fdf6e0; --head:#f1efea;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Malgun Gothic","맑은 고딕","Pretendard",system-ui,-apple-system,sans-serif;
+  font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1360px;margin:0 auto;padding:72px 32px 110px}
+header.top{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;
+  padding-bottom:20px;border-bottom:1px solid var(--line);margin-bottom:34px}
+h1{font-size:21px;margin:0 0 6px;font-weight:700;letter-spacing:-.02em}
+.sub{color:var(--sub);font-size:13px}
+.today{color:var(--sub);font-size:13px;white-space:nowrap;padding-top:4px}
+.sign{position:fixed;right:18px;bottom:12px;font-size:12.5px;color:#a8a49b;
+  font-family:inherit;font-weight:700;letter-spacing:.02em;pointer-events:none;z-index:5}
+.card{background:var(--card2);border:1px solid var(--line2);border-radius:11px;
+  padding:24px 26px 26px;margin-bottom:20px}
+.card h2{font-size:15px;margin:0 0 18px;font-weight:700;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.card h2 .n{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;
+  border-radius:6px;background:var(--accent);color:#fff;font-size:11px;font-weight:700}
+.card h2 .hint{font-weight:500;font-size:12px;color:var(--sub)}
+#drop{border:1px solid var(--line2);border-radius:11px;background:var(--card);padding:34px 30px;
+  display:flex;align-items:center;gap:20px;cursor:pointer;transition:.15s}
+#drop:hover,#drop.over{border-color:var(--accent);background:var(--accent-soft)}
+#drop .ico{font-size:32px;line-height:1}
+#drop .t1{font-weight:700;font-size:15px;margin-bottom:3px}
+#drop .t2{color:var(--sub);font-size:13px}
+.files{margin-top:12px;display:flex;flex-direction:column;gap:7px}
+.filerow{display:flex;align-items:center;gap:11px;font-size:13px;background:var(--card2);
+  border:1px solid var(--line2);border-radius:9px;padding:9px 14px}
+.filerow .tag{font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;background:var(--accent-soft);color:var(--accent)}
+.filerow .tag.agg{background:var(--ok-bg);color:var(--ok)}
+.grid{display:grid;gap:16px 20px}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.g6{grid-template-columns:repeat(6,minmax(0,1fr))}
+label.f{display:block}
+label.f span{display:block;font-size:12px;color:var(--sub);margin-bottom:5px;font-weight:600}
+input,select{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;
+  background:#fff;font:inherit;color:inherit}
+input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;
+  border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+th,td{border-bottom:1px solid var(--line2);border-right:1px solid var(--line2);
+  padding:10px 13px;text-align:right;white-space:nowrap;vertical-align:middle}
+th:last-child,td:last-child{border-right:none}
+tr:last-child td{border-bottom:none}
+th{background:var(--head);font-weight:700;text-align:center;font-size:12.5px;
+  line-height:1.45;padding:11px 13px;color:#3a3833}
+.thsub{display:block;font-size:11px;font-weight:500;color:var(--sub);margin-top:1px}
+td.l,th.l{text-align:left}
+td.c,th.c{text-align:center}
+td input{padding:6px 9px;text-align:right;border-radius:6px;font-size:13px}
+td input.txt{text-align:left}
+td select{padding:6px 9px;border-radius:6px;font-size:12px}
+.edit{display:inline-flex;align-items:center;gap:6px;width:100%}
+.edit svg{color:#a9a49a;flex:0 0 auto;display:block}
+.edit input{flex:1 1 auto;min-width:92px;background:#fffdf7;border-color:#e3ded1}
+.edit input.ed{background:#fdf3d8;border-color:#e0cf9a;font-weight:700}
+tr.new td{background:var(--new-bg)}
+tr.neg td{background:var(--err-bg)}
+tr.man td{background:#f3f7fa}
+tr.sum td{background:var(--head);font-weight:700}
+.badge{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;border-radius:20px}
+.badge.w{background:var(--warn-bg);color:var(--warn);border:1px solid #ead9ab}
+.badge.e{background:var(--err-bg);color:var(--err);border:1px solid #efc7c1}
+.badge.i{background:#eaf1f7;color:#2b6089;border:1px solid #cbdcea}
+.notice{border-radius:10px;padding:14px 18px;margin-bottom:14px;font-size:13px;line-height:1.65}
+.notice.w{background:var(--warn-bg);border:1px solid #ebdcb2;color:#6f5106}
+.notice.e{background:var(--err-bg);border:1px solid #eecdc8;color:#8a2c20}
+.notice.ok{background:var(--ok-bg);border:1px solid #cfe1d7;color:#215b44}
+.notice > b:first-child{display:block;margin-bottom:4px;font-size:13.5px}
+.btn{border:none;border-radius:9px;padding:12px 22px;font:inherit;font-weight:700;cursor:pointer;
+  background:var(--accent);color:#fff}
+.btn:hover{filter:brightness(.94)}
+.btn.sec{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.sm{padding:8px 15px;font-size:12.5px}
+.btnrow{display:flex;gap:11px;flex-wrap:wrap;align-items:center}
+.hide{display:none!important}
+details.mgr{margin-top:16px}
+details.mgr summary{cursor:pointer;font-size:13px;color:var(--sub);font-weight:600;padding:7px 0}
+.mgrbox{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:14px}
+@media (max-width:1100px){.mgrbox{grid-template-columns:1fr}}
+.mgrt{font-size:12.5px;font-weight:700;margin-bottom:9px}
+.mgrt .small{font-weight:500;margin-left:6px}
+.mini{width:auto;border:1px solid var(--line);background:#fff;border-radius:5px;
+  padding:2px 7px;font-size:11px;line-height:1.4;cursor:pointer;color:var(--sub)}
+.mini:hover{background:#f4f2ee}
+.mini.del{color:var(--err);border-color:#e8cac5}
+.mini.mv{color:#2b6089;border-color:#cbdcea}
+.storebar{display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:18px}
+.qbtns{display:flex;gap:8px;flex-wrap:wrap}
+.qbtn{width:auto;border:1px solid var(--line);background:#fff;border-radius:9px;
+  padding:10px 15px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;color:var(--ink)}
+.qbtn:hover{background:#f6f4f0}
+.qbtn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.qbtn .dot{display:inline-block;width:6px;height:6px;border-radius:50%;
+  background:var(--ok);margin-left:7px;vertical-align:middle}
+.qbtn.on .dot{background:#fff}
+.qbtn.empty{color:#a9a49a;font-weight:500}
+.cnt{display:inline-block;background:var(--accent);color:#fff;border-radius:20px;
+  font-size:11px;font-weight:700;padding:0 7px;margin-left:6px}
+.btn.sec .cnt{background:var(--accent);color:#fff}
+.scroll{overflow-x:auto}
+.small{font-size:12px;color:var(--sub)}
+.chk{width:auto;margin:0}
+.mono{font-variant-numeric:tabular-nums}
+.sect{font-size:12.5px;font-weight:700;margin:22px 0 9px}
+</style>
+</head>
+<body>
+<div class="sign">juuu8</div>
+<div class="wrap">
+<header class="top">
+  <div>
+    <h1>보험금매출 집계 · 매입매출전표 생성기</h1>
+    <div class="sub">분기별 보험금매출 파일을 넣으면 보험매출집계표와 위하고 업로드 서식을 만들어 줍니다</div>
+  </div>
+  <div class="today" id="today"></div>
+</header>
+
+<div style="margin-bottom:16px">
+  <div id="drop">
+    <div class="ico">📂</div>
+    <div>
+      <div class="t1">보험금매출 엑셀 파일 업로드</div>
+      <div class="t2">클릭하거나 파일을 여기로 끌어다 놓으세요 (.xlsx) &nbsp;·&nbsp; 기존 <b>보험매출집계.xlsx</b>를 함께 넣으면 그 파일에 분기 시트를 추가·갱신합니다</div>
+    </div>
+  </div>
+  <input type="file" id="fi" accept=".xlsx" multiple class="hide">
+  <div class="files" id="files"></div>
+</div>
+
+<div id="app">
+
+  <div class="card">
+    <h2><span class="n">1</span>설정</h2>
+    <div class="grid g4" style="margin-bottom:14px">
+      <label class="f"><span>상호</span><input id="cName" placeholder="주식회사 ○○"></label>
+      <label class="f"><span>년도</span><input id="cYear" type="number" min="2000" max="2099"></label>
+      <label class="f"><span>분기</span><select id="cQ">
+        <option value="1">1분기 (1~3월) · 1기예정</option>
+        <option value="2">2분기 (4~6월) · 1기확정</option>
+        <option value="3">3분기 (7~9월) · 2기예정</option>
+        <option value="4">4분기 (10~12월) · 2기확정</option>
+      </select></label>
+      <label class="f"><span>보험매출 전표일자</span><input id="cDate" type="date"></label>
+    </div>
+    <div class="grid g6">
+      <label class="f"><span>매입매출구분</span><input id="cInOut" value="1"></label>
+      <label class="f"><span>과세유형</span><input id="cType" value="14"></label>
+      <label class="f"><span>기본계정</span><input id="cAcc" value="412"></label>
+      <label class="f"><span>상대계정</span><input id="cAcc2" value="108"></label>
+      <label class="f"><span>품명(보험)</span><input id="cItem1" value="보험매출"></label>
+      <label class="f"><span>품명(현금)</span><input id="cItem2" value="현금매출"></label>
+    </div>
+    <div class="small" style="margin-top:10px">현금매출 전표일자는 각 월 1일로 자동 생성됩니다. 공급가액 = 반올림(공급대가 ÷ 1.1), 부가세 = 공급대가 − 공급가액.</div>
+  </div>
+
+  <div class="card" id="storeCard">
+    <h2><span class="n">2</span>연도별 보관함<span class="hint">분기 탭을 누르면 저장된 내용이 아래 3~6번에 그대로 열립니다 · 수정 후 다시 저장하면 갱신됩니다</span></h2>
+    <div class="storebar">
+      <label class="f" style="width:112px"><span>연도</span><input id="sYear" type="number" min="2000" max="2099"></label>
+      <div>
+        <span class="small" style="display:block;margin-bottom:6px;font-weight:600">분기</span>
+        <div class="qbtns" id="qbtns"></div>
+      </div>
+      <div class="btnrow" style="margin-left:auto">
+        <button class="btn sec sm" id="bStoreSave">이 분기 저장 / 업데이트</button>
+        <button class="btn sec sm" id="bStoreDel">선택 분기 삭제</button>
+      </div>
+    </div>
+    <div id="storeBody"></div>
+  </div>
+
+  <div id="notices"></div>
+
+  <div class="card">
+    <h2><span class="n">3</span>보험사별 집계</h2>
+    <div class="scroll"><table id="tMain"></table></div>
+    <div class="btnrow" style="margin-top:14px">
+      <button class="btn sec" id="bAddIns">+ 보험사 행 추가</button>
+      <button class="btn sec" id="bReset">기본값으로 되돌리기</button>
+    </div>
+    <details class="mgr">
+      <summary>별칭 관리 — 원본 파일의 적요·의뢰인명을 어떤 보험사로 볼지 지정합니다 (이 브라우저에 저장)</summary>
+      <div class="mgrbox">
+        <div>
+          <div class="mgrt">적요(B열) 접두어 → 보험사
+            <span class="small">위에서부터 순서대로 검사합니다 (예: 한화캐롯이 한화보다 위)</span></div>
+          <div class="scroll"><table id="tBigo"></table></div>
+          <div class="btnrow" style="margin-top:9px"><button class="btn sec sm" id="bAddBigo">+ 적요 별칭 추가</button></div>
+        </div>
+        <div>
+          <div class="mgrt">의뢰인/수취인명 → 보험사
+            <span class="small">적요로 못 찾을 때 이 목록으로 찾습니다</span></div>
+          <div class="scroll"><table id="tName"></table></div>
+          <div class="btnrow" style="margin-top:9px"><button class="btn sec sm" id="bAddName">+ 의뢰인명 별칭 추가</button></div>
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">4</span>세금계산서 발행 중복분<span class="hint">색칠된 행 자동 인식 · 직접 추가·수정 가능</span></h2>
+    <div class="btnrow" style="margin-bottom:13px">
+      <button class="btn sec sm" id="bTaxAdd">+ 직접 추가</button>
+      <button class="btn sec sm" id="bTaxCarry">지난분기 누락분 불러오기<span class="cnt hide" id="carryCnt"></span></button>
+    </div>
+    <div class="scroll"><table id="tTax"></table></div>
+    <div class="small" style="margin-top:9px">발행일이 이번 분기를 벗어난 건은 <b>분기 밖</b>으로 표시됩니다. <b>이월</b> 버튼을 누르면 그 건을 다른 분기 몫으로 보관해 두었다가, 해당 분기에서 <b>지난분기 누락분 불러오기</b>로 꺼내 쓸 수 있습니다.</div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">5</span>환불건(배상책임) 차감<span class="hint">출금·키워드 자동 수집 · 직접 추가·수정 가능</span></h2>
+    <div class="btnrow" style="margin-bottom:13px">
+      <button class="btn sec sm" id="bRefAdd">+ 직접 추가</button>
+    </div>
+    <div class="scroll"><table id="tRef"></table></div>
+    <div class="small" style="margin-top:9px">출금 열의 금액은 자동 선택됩니다. 키워드로 찾은 행은 <b>선택 해제</b> 상태이고, <b>일부 환불</b>은 금액을 알 수 없어 비워 둡니다 — 실제 환불액을 넣고 체크하세요. 원본에 표시가 없는 건은 <b>+ 직접 추가</b>로 넣으면 됩니다.</div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">6</span>검사현황 → 현금매출</h2>
+    <div class="scroll"><table id="tCash"></table></div>
+  </div>
+
+</div>
+
+<div class="card">
+  <h2><span class="n">7</span>엑셀 저장</h2>
+  <div class="btnrow">
+    <button class="btn" id="bAgg">보험매출집계.xlsx 저장 (연도 전체 분기)</button>
+    <button class="btn" id="bUp">매입매출전표 업로드 서식.xlsx 저장 (선택 분기)</button>
+  </div>
+  <div class="small" id="saveMsg" style="margin-top:11px"></div>
+</div>
+
+</div>
+<script>
+/* ============================================================
+   보험금매출 집계 · 매입매출전표 생성기
+   외부 라이브러리 없음 (브라우저 내장 압축 API 사용)
+   ============================================================ */
+'use strict';
+
+/* ---------- 0. 공통 유틸 ---------- */
+const $ = (s) => document.querySelector(s);
+const nf = (n) => (n == null || n === '' ? '' : Number(n).toLocaleString('ko-KR'));
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const colLetter = (n) => { let s = ''; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = (n - m - 1) / 26; } return s; };
+const colNum = (s) => { let n = 0; for (const ch of s) { const c = ch.charCodeAt(0); if (c < 65 || c > 90) break; n = n * 26 + (c - 64); } return n; };
+const serialToDate = (n) => new Date(Date.UTC(1899, 11, 30) + Math.round(n) * 86400000);
+const round = (n) => Math.round(n);
+
+/* ---------- 1. ZIP 읽기/쓰기 ---------- */
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) { let c = i; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[i] = c >>> 0; }
+  return t;
+})();
+function crc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC_TABLE[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+
+async function streamBytes(u8, mode, kind) {
+  const S = kind === 'c' ? CompressionStream : DecompressionStream;
+  const s = new S(mode);
+  const w = s.writable.getWriter(); w.write(u8); w.close();
+  const chunks = []; const r = s.readable.getReader();
+  for (;;) { const { done, value } = await r.read(); if (done) break; chunks.push(value); }
+  let len = 0; chunks.forEach(c => len += c.length);
+  const out = new Uint8Array(len); let o = 0; chunks.forEach(c => { out.set(c, o); o += c.length; });
+  return out;
+}
+const inflateRaw = (u8) => streamBytes(u8, 'deflate-raw', 'd');
+const deflateRaw = (u8) => streamBytes(u8, 'deflate-raw', 'c');
+
+async function unzip(buf) {
+  const u8 = new Uint8Array(buf), dv = new DataView(buf);
+  let eocd = -1;
+  for (let i = u8.length - 22; i >= Math.max(0, u8.length - 66000); i--) { if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; } }
+  if (eocd < 0) throw new Error('ZIP 형식이 아닙니다.');
+  const n = dv.getUint16(eocd + 10, true);
+  let off = dv.getUint32(eocd + 16, true);
+  const out = {};
+  const dec = new TextDecoder('utf-8');
+  for (let k = 0; k < n; k++) {
+    if (dv.getUint32(off, true) !== 0x02014b50) break;
+    const method = dv.getUint16(off + 10, true);
+    const csize = dv.getUint32(off + 20, true);
+    const nameLen = dv.getUint16(off + 28, true), extraLen = dv.getUint16(off + 30, true), commLen = dv.getUint16(off + 32, true);
+    const lho = dv.getUint32(off + 42, true);
+    const name = dec.decode(u8.subarray(off + 46, off + 46 + nameLen));
+    const lnameLen = dv.getUint16(lho + 26, true), lextraLen = dv.getUint16(lho + 28, true);
+    const ds = lho + 30 + lnameLen + lextraLen;
+    out[name] = { method, raw: u8.subarray(ds, ds + csize) };
+    off += 46 + nameLen + extraLen + commLen;
+  }
+  return out;
+}
+async function entryBytes(e) { return e.method === 8 ? await inflateRaw(e.raw) : e.raw; }
+async function entryText(e) { return new TextDecoder('utf-8').decode(await entryBytes(e)); }
+
+async function makeZip(files) {
+  const enc = new TextEncoder();
+  const locals = [], centrals = [];
+  let offset = 0;
+  for (const name of Object.keys(files)) {
+    const data = files[name];
+    const nb = enc.encode(name);
+    const crc = crc32(data);
+    const comp = await deflateRaw(data);
+    const lh = new Uint8Array(30 + nb.length); const lv = new DataView(lh.buffer);
+    lv.setUint32(0, 0x04034b50, true); lv.setUint16(4, 20, true); lv.setUint16(6, 0x0800, true);
+    lv.setUint16(8, 8, true); lv.setUint32(14, crc, true);
+    lv.setUint32(18, comp.length, true); lv.setUint32(22, data.length, true);
+    lv.setUint16(26, nb.length, true); lh.set(nb, 30);
+    locals.push(lh, comp);
+    const ch = new Uint8Array(46 + nb.length); const cv = new DataView(ch.buffer);
+    cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true);
+    cv.setUint16(8, 0x0800, true); cv.setUint16(10, 8, true); cv.setUint32(16, crc, true);
+    cv.setUint32(20, comp.length, true); cv.setUint32(24, data.length, true);
+    cv.setUint16(28, nb.length, true); cv.setUint32(42, offset, true); ch.set(nb, 46);
+    centrals.push(ch);
+    offset += lh.length + comp.length;
+  }
+  let cdSize = 0; centrals.forEach(c => cdSize += c.length);
+  const eocd = new Uint8Array(22); const ev = new DataView(eocd.buffer);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(8, centrals.length, true); ev.setUint16(10, centrals.length, true);
+  ev.setUint32(12, cdSize, true); ev.setUint32(16, offset, true);
+  const all = [...locals, ...centrals, eocd];
+  let total = 0; all.forEach(a => total += a.length);
+  const out = new Uint8Array(total); let o = 0; all.forEach(a => { out.set(a, o); o += a.length; });
+  return out;
+}
+
+/* ---------- 2. XLSX 읽기 ---------- */
+async function readXlsx(buf) {
+  const zip = await unzip(buf);
+  const wbXml = await entryText(zip['xl/workbook.xml']);
+  const relsXml = await entryText(zip['xl/_rels/workbook.xml.rels']);
+  const dp = new DOMParser();
+  const wbDoc = dp.parseFromString(wbXml, 'application/xml');
+  const relDoc = dp.parseFromString(relsXml, 'application/xml');
+  const rel = {};
+  relDoc.querySelectorAll('Relationship').forEach(r => { rel[r.getAttribute('Id')] = r.getAttribute('Target'); });
+
+  // sharedStrings
+  let sst = [];
+  if (zip['xl/sharedStrings.xml']) {
+    const d = dp.parseFromString(await entryText(zip['xl/sharedStrings.xml']), 'application/xml');
+    d.querySelectorAll('si').forEach(si => {
+      let s = ''; si.querySelectorAll('t').forEach(t => { s += t.textContent; }); sst.push(s);
+    });
+  }
+  // styles -> fillId, numFmtId per xf
+  const xfs = [];
+  const fillsColored = [];
+  if (zip['xl/styles.xml']) {
+    const d = dp.parseFromString(await entryText(zip['xl/styles.xml']), 'application/xml');
+    const fillsEl = d.getElementsByTagName('fills')[0];
+    if (fillsEl) {
+      Array.from(fillsEl.getElementsByTagName('fill')).forEach(f => {
+        const pf = f.getElementsByTagName('patternFill')[0];
+        const pt = pf ? (pf.getAttribute('patternType') || 'none') : 'none';
+        fillsColored.push(pt !== 'none' && pt !== 'gray125');
+      });
+    }
+    const cx = d.getElementsByTagName('cellXfs')[0];
+    if (cx) Array.from(cx.getElementsByTagName('xf')).forEach(x => {
+      xfs.push({ fill: parseInt(x.getAttribute('fillId') || '0'), numFmt: parseInt(x.getAttribute('numFmtId') || '0') });
+    });
+  }
+  const styleColored = (s) => { const x = xfs[s || 0]; return x ? !!fillsColored[x.fill] : false; };
+
+  const sheets = [];
+  const sheetEls = wbDoc.getElementsByTagName('sheet');
+  for (const sh of Array.from(sheetEls)) {
+    const name = sh.getAttribute('name');
+    const rid = sh.getAttribute('r:id') || sh.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'id');
+    let target = rel[rid] || '';
+    let path = target.startsWith('/') ? target.slice(1) : 'xl/' + target;
+    if (!zip[path]) path = 'xl/worksheets/' + target.split('/').pop();
+    if (!zip[path]) { sheets.push({ name, rows: new Map(), maxRow: 0 }); continue; }
+    const sd = dp.parseFromString(await entryText(zip[path]), 'application/xml');
+    const rows = new Map(); let maxRow = 0;
+    Array.from(sd.getElementsByTagName('row')).forEach(r => {
+      const rn = parseInt(r.getAttribute('r')); if (rn > maxRow) maxRow = rn;
+      const cells = new Map();
+      Array.from(r.getElementsByTagName('c')).forEach(c => {
+        const ref = c.getAttribute('r'); const cn = colNum(ref);
+        const t = c.getAttribute('t'); const s = parseInt(c.getAttribute('s') || '0');
+        const fEl = c.getElementsByTagName('f')[0];
+        const vEl = c.getElementsByTagName('v')[0];
+        let v = null;
+        if (t === 'inlineStr') { const is = c.getElementsByTagName('is')[0]; v = is ? Array.from(is.getElementsByTagName('t')).map(x => x.textContent).join('') : ''; }
+        else if (vEl) { v = t === 's' ? (sst[parseInt(vEl.textContent)] ?? '') : (t === 'str' || t === 'e' ? vEl.textContent : Number(vEl.textContent)); }
+        cells.set(cn, { v, f: fEl ? fEl.textContent : null, s, colored: styleColored(s) });
+      });
+      rows.set(rn, cells);
+    });
+    // 병합셀: 좌상단 값/색상을 하위 셀로 전파
+    const merges = [];
+    Array.from(sd.getElementsByTagName('mergeCell')).forEach(m => merges.push(m.getAttribute('ref')));
+    merges.forEach(ref => {
+      const [a, b] = ref.split(':'); if (!b) return;
+      const r1 = parseInt(a.replace(/[A-Z]/g, '')), r2 = parseInt(b.replace(/[A-Z]/g, ''));
+      const c1 = colNum(a), c2 = colNum(b);
+      const src = rows.get(r1) && rows.get(r1).get(c1);
+      if (!src) return;
+      for (let rr = r1; rr <= r2; rr++) for (let cc = c1; cc <= c2; cc++) {
+        if (rr === r1 && cc === c1) continue;
+        if (!rows.has(rr)) rows.set(rr, new Map());
+        const cur = rows.get(rr).get(cc);
+        if (!cur || cur.v == null || cur.v === '') rows.get(rr).set(cc, { v: src.v, f: null, s: src.s, colored: src.colored, merged: true });
+      }
+    });
+    sheets.push({ name, rows, maxRow, merges });
+  }
+  return { zip, sheets };
+}
+const cellOf = (sh, r, c) => { const row = sh.rows.get(r); return row ? row.get(c) : undefined; };
+const valOf = (sh, r, c) => { const x = cellOf(sh, r, c); return x ? x.v : null; };
+const rowText = (sh, r, maxC = 16) => {
+  const row = sh.rows.get(r); if (!row) return '';
+  let s = ''; row.forEach(c => { if (c.v != null) s += String(c.v) + ' '; }); return s;
+};
+
+/* ---------- 3. 기본 보험사 · 별칭 ---------- */
+const DEFAULT_INS = [
+  ['한화손해보험㈜', 97000],
+  ['삼성화재해상보험㈜', 97001],
+  ['동부화재', 97002],
+  ['㈜KB손해보험', 97007],
+  ['AXA손해보험㈜', 97003],
+  ['메리츠화재', 97004],
+  ['흥국화재해상보험㈜', 97005],
+  ['한화캐롯손해보험㈜', 97023],
+  ['현대해상화재보험', 97016],
+  ['전국버스공제조합', 97010],
+  ['전국렌터카공제조합', 97011],
+  ['전국개인택시운송사업조합연합회', 97013],
+  ['전국전세버스운송사업', 97014],
+  ['전국화물자동차운송사업연합회공제조합', 97012],
+  ['롯데손해보험㈜', 97009],
+  ['택시공제조합', 97018],
+  ['㈜맥클라렌스손해보험 (미군보험)', 97020],
+  ['MG손해보험', 97008],
+  ['농협손해보험', 97021],
+  ['하나손해보험(에듀)', 97022],
+  ['배달공제보험', 97024],
+].map(([name, code]) => ({ name, code }));
+
+/* 적요(B열) 접두어 우선 매칭 — 의뢰인명이 같아 구분이 안 되는 건 여기서 갈림 */
+const DEFAULT_BIGO = [
+  ['한화캐롯', '한화캐롯손해보험㈜'],
+  ['캐롯', '한화캐롯손해보험㈜'],
+  ['한화', '한화손해보험㈜'],
+  ['개택', '택시공제조합'],
+  ['택공', '전국개인택시운송사업조합연합회'],
+];
+/* 의뢰인/수취인명 매칭 */
+const DEFAULT_NAME = [
+  ['삼성화재해상보험(주', '삼성화재해상보험㈜'],
+  ['현대해상화재보험(주)', '현대해상화재보험'],
+  ['디비손해보험(주)', '동부화재'],
+  ['디비손해보험주식회사', '동부화재'],
+  ['DB손보', '동부화재'],
+  ['(주)케이비손해보험', '㈜KB손해보험'],
+  ['메리츠화재해상보험(주)', '메리츠화재'],
+  ['메리츠', '메리츠화재'],
+  ['AXA', 'AXA손해보험㈜'],
+  ['악사손해보험주식회사', 'AXA손해보험㈜'],
+  ['하나손해보험주식회사', '하나손해보험(에듀)'],
+  ['흥국화재해상보험(주', '흥국화재해상보험㈜'],
+  ['롯데손해보험주식회사', '롯데손해보험㈜'],
+  ['전국개인택시조합', '택시공제조합'],
+  ['전국개인택시공제조합', '택시공제조합'],
+  ['전국택시운송사업조합', '전국개인택시운송사업조합연합회'],
+  ['전국버스운송사업조합', '전국버스공제조합'],
+  ['버스공제조합경기', '전국버스공제조합'],
+  ['전국전세버스운송사업조합연합회', '전국전세버스운송사업'],
+  ['전국화물자동차공제조', '전국화물자동차운송사업연합회공제조합'],
+  ['전국렌터카공제조합', '전국렌터카공제조합'],
+  ['배달공제', '배달공제보험'],
+  ['엠지손해보험', 'MG손해보험'],
+  ['농협손해보험', '농협손해보험'],
+  ['맥클라렌스', '㈜맥클라렌스손해보험 (미군보험)'],
+];
+
+const LS = 'boheom-agg-v2';
+let CFG = loadCfg();
+function loadCfg() {
+  try {
+    const j = JSON.parse(localStorage.getItem(LS));
+    if (j && j.ins && j.bigo && j.name) return j;
+  } catch (e) { }
+  return { ins: JSON.parse(JSON.stringify(DEFAULT_INS)), bigo: JSON.parse(JSON.stringify(DEFAULT_BIGO)), name: JSON.parse(JSON.stringify(DEFAULT_NAME)), company: '' };
+}
+function saveCfg() { try { localStorage.setItem(LS, JSON.stringify(CFG)); } catch (e) { } }
+
+function matchInsurer(bigo, name) {
+  const b = String(bigo || '').trim();
+  for (const [p, t] of CFG.bigo) if (b.startsWith(p)) return t;
+  const n = String(name || '').trim();
+  for (const [p, t] of CFG.name) if (n === p) return t;
+  for (const [p, t] of CFG.name) if (n && (n.startsWith(p) || n.indexOf(p) >= 0)) return t;
+  return null;
+}
+
+/* ---------- 4. 분석 ---------- */
+const QUARTER = { 1: { m: [1, 2, 3], label: '1기예정', title: '1기 예정' }, 2: { m: [4, 5, 6], label: '1기확정', title: '1기 확정' }, 3: { m: [7, 8, 9], label: '2기예정', title: '2기 예정' }, 4: { m: [10, 11, 12], label: '2기확정', title: '2기 확정' } };
+
+function findHeader(sh) {
+  const map = {};
+  const row = sh.rows.get(1); if (!row) return map;
+  row.forEach((c, n) => {
+    const t = String(c.v == null ? '' : c.v).replace(/\s/g, '');
+    if (!t) return;
+    if (t === '적요') map.bigo = n;
+    else if (t.indexOf('의뢰인') >= 0) map.name = n;
+    else if (t === '입금') map.in = n;
+    else if (t === '출금') map.out = n;
+    else if (t === '날짜') map.date = n;
+    else if (t === '상호') map.corp = n;
+    else if (t === '금액') map.amt = n;
+    else if (t === '차액') map.diff = n;
+    else if (t.indexOf('거래일') >= 0) map.dt = n;
+  });
+  return map;
+}
+
+function analyze(book) {
+  const st = { blocks: [], taxRows: [], refunds: [], cash: [], unmatched: [], warn: [] };
+  const ins = book.sheets.filter(s => s.name.indexOf('보험') >= 0);
+  const sh = ins.find(s => findHeader(s).in) || ins[0];
+  if (!sh) throw new Error('보험 내역 시트를 찾지 못했습니다. 시트명에 "보험"이 포함되어야 합니다.');
+  const H = findHeader(sh);
+  if (!H.in) throw new Error('"입금" 열 머리글을 찾지 못했습니다.');
+  st.sheetName = sh.name;
+
+  // 블록 경계 = 입금 열에 SUM 수식이 있는 행
+  const bnd = [];
+  for (let r = 2; r <= sh.maxRow; r++) {
+    const c = cellOf(sh, r, H.in);
+    if (c && c.f && /^\s*SUM\s*\(/i.test(c.f)) bnd.push(r);
+  }
+  if (!bnd.length) throw new Error('보험사 블록 구분(=SUM 수식 행)을 찾지 못했습니다.');
+  st.lastSum = bnd[bnd.length - 1];
+
+  let start = 2;
+  for (const b of bnd) {
+    const blk = { start, end: b - 1, amount: 0, votes: {}, rows: [], rawNames: new Set(), sample: '' };
+    for (let r = start; r < b; r++) {
+      const inV = valOf(sh, r, H.in);
+      const bigo = valOf(sh, r, H.bigo), nm = valOf(sh, r, H.name);
+      if (nm) blk.rawNames.add(String(nm).trim());
+      if (!blk.sample && bigo) blk.sample = String(bigo);
+      const m = matchInsurer(bigo, nm);
+      if (m) blk.votes[m] = (blk.votes[m] || 0) + 1;
+      if (typeof inV === 'number') {
+        blk.amount += inV;
+        const cc = cellOf(sh, r, H.in);
+        if (cc && cc.colored) {
+          const dRaw = H.date ? valOf(sh, r, H.date) : null;
+          blk.rows.push({ row: r, bigo: bigo || '', date: typeof dRaw === 'number' ? dRaw : null, dateTxt: dRaw == null ? '' : (typeof dRaw === 'number' ? fmtDate(serialToDate(dRaw)) : String(dRaw)), corp: H.corp ? (valOf(sh, r, H.corp) || '') : '', amount: inV });
+        }
+      }
+      // 환불 후보
+      if (H.out) { const o = valOf(sh, r, H.out); if (typeof o === 'number' && o) st.refunds.push({ row: r, kind: '출금', amount: o, bigo: bigo || '', name: nm || '', memo: '출금 열', auto: true }); }
+      const txt = rowText(sh, r);
+      if (/환불|배상/.test(txt)) {
+        const part = /일부/.test(txt);
+        st.refunds.push({ row: r, kind: '키워드', partial: part, amount: part ? 0 : (typeof inV === 'number' ? inV : 0), gross: typeof inV === 'number' ? inV : 0, bigo: bigo || '', name: nm || '', memo: txt.trim().slice(0, 70), auto: false });
+      }
+    }
+    let best = null, bv = -1;
+    for (const k in blk.votes) if (blk.votes[k] > bv) { bv = blk.votes[k]; best = k; }
+    blk.insurer = best;
+    st.blocks.push(blk);
+    start = b + 1;
+  }
+  // 하단 비고영역: 집계 제외, 환불 키워드만 수집
+  for (let r = st.lastSum + 1; r <= sh.maxRow; r++) {
+    const txt = rowText(sh, r);
+    if (!/환불|배상/.test(txt)) continue;
+    const bigo = valOf(sh, r, H.bigo), nm = valOf(sh, r, H.name);
+    const inV = valOf(sh, r, H.in);
+    const part = /일부/.test(txt);
+    st.refunds.push({ row: r, kind: '키워드(비고)', partial: part, amount: part ? 0 : (typeof inV === 'number' ? inV : 0), gross: typeof inV === 'number' ? inV : 0, bigo: bigo || '', name: nm || '', memo: txt.trim().slice(0, 70), auto: false });
+  }
+  // 정리: 같은 행에 출금 금액이 이미 있으면 키워드 후보는 버리고, 금액 0인 키워드 후보(제목 줄 등)도 버린다
+  const withOut = new Set(st.refunds.filter(x => x.kind === '출금').map(x => x.row));
+  const seen = new Set();
+  st.refunds = st.refunds.filter(x => {
+    if (x.kind !== '출금' && (withOut.has(x.row) || (!x.amount && !x.partial))) return false;
+    const k = x.row + '|' + x.kind; if (seen.has(k)) return false; seen.add(k); return true;
+  });
+  st.refunds.forEach(x => { x.insurer = matchInsurer(x.bigo, x.name); x.checked = x.auto; });
+
+  // 세금계산서 색칠행 모으기
+  st.blocks.forEach(b => b.rows.forEach(r => st.taxRows.push(Object.assign({ insurer: b.insurer }, r, { checked: true }))));
+
+  // 검사현황 → 현금
+  book.sheets.filter(s => s.name.indexOf('검사') >= 0).forEach(s => {
+    let mo = null;
+    let mm = /(\d{1,2})\s*월/.exec(s.name);
+    const title = String(valOf(s, 1, 3) || valOf(s, 1, 1) || '');
+    if (!mm) mm = /(\d{1,2})\s*월/.exec(title);
+    if (mm) mo = parseInt(mm[1]);
+    const ym = /(\d{4})\s*년/.exec(title); if (ym) st.year = parseInt(ym[1]);
+    // 상단 '현금' 열 찾기 (3행 머리글)
+    let cashCol = 7;
+    const h3 = s.rows.get(3);
+    if (h3) h3.forEach((c, n) => { if (String(c.v || '').replace(/\s/g, '') === '현금') cashCol = n; });
+    let amt = valOf(s, 4, cashCol);
+    if (typeof amt !== 'number') {
+      // 대체: 마지막 합계행의 데이터 '현금' 열
+      let dc = 9; const h9 = s.rows.get(9);
+      if (h9) h9.forEach((c, n) => { if (String(c.v || '').replace(/\s/g, '') === '현금') dc = n; });
+      const lv = valOf(s, s.maxRow, dc);
+      amt = typeof lv === 'number' ? lv : 0;
+    }
+    st.cash.push({ sheet: s.name, month: mo, amount: amt || 0 });
+  });
+  st.cash.sort((a, b) => (a.month || 99) - (b.month || 99));
+
+  // 년도/분기 자동 추정
+  if (!st.year) {
+    for (let r = 2; r <= Math.min(sh.maxRow, 60); r++) {
+      const d = H.dt ? valOf(sh, r, H.dt) : null;
+      const m = d && /(\d{4})-(\d{2})-(\d{2})/.exec(String(d));
+      if (m) { st.year = parseInt(m[1]); break; }
+    }
+  }
+  const mos = st.cash.map(c => c.month).filter(Boolean);
+  if (mos.length) st.quarter = Math.floor((Math.min(...mos) - 1) / 3) + 1;
+  else {
+    for (let r = 2; r <= Math.min(sh.maxRow, 60); r++) {
+      const d = H.dt ? valOf(sh, r, H.dt) : null;
+      const m = d && /(\d{4})-(\d{2})-(\d{2})/.exec(String(d));
+      if (m) { st.quarter = Math.floor((parseInt(m[2]) - 1) / 3) + 1; break; }
+    }
+  }
+  st.blocks.forEach((b, i) => { if (!b.insurer) st.unmatched.push(i); });
+  return st;
+}
+const fmtDate = (d) => d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0');
+
+/* ---------- 5. XLSX 쓰기 ---------- */
+const XML_HEAD = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+const ENC = new TextEncoder();
+const bytes = (s) => ENC.encode(s);
+
+function appendSection(xml, tag, itemsXml, addCount) {
+  const re = new RegExp('<' + tag + '(\\s[^>]*?)?(/)?>');
+  const m = re.exec(xml);
+  if (!m) {
+    const nx = '<' + tag + ' count="' + addCount + '">' + itemsXml + '</' + tag + '>';
+    return { xml: xml.replace('</styleSheet>', nx + '</styleSheet>'), base: 0 };
+  }
+  const attrs = m[1] || '';
+  const cm = /count="(\d+)"/.exec(attrs);
+  const base = cm ? parseInt(cm[1]) : 0;
+  const newAttrs = cm ? attrs.replace(/count="\d+"/, 'count="' + (base + addCount) + '"') : (attrs + ' count="' + (base + addCount) + '"');
+  if (m[2] === '/') {
+    const nx = '<' + tag + newAttrs + '>' + itemsXml + '</' + tag + '>';
+    return { xml: xml.slice(0, m.index) + nx + xml.slice(m.index + m[0].length), base };
+  }
+  const close = xml.indexOf('</' + tag + '>', m.index);
+  const out = xml.slice(0, m.index) + '<' + tag + newAttrs + '>' +
+    xml.slice(m.index + m[0].length, close) + itemsXml + xml.slice(close);
+  return { xml: out, base };
+}
+
+const FONT = (b, sz) => '<font>' + (b ? '<b/>' : '') + '<sz val="' + sz + '"/><color theme="1"/><name val="맑은 고딕"/><family val="3"/><charset val="129"/></font>';
+const FILL = (rgb) => '<fill><patternFill patternType="solid"><fgColor rgb="' + rgb + '"/><bgColor indexed="64"/></patternFill></fill>';
+const BORDER = '<border><left style="thin"><color rgb="FFBFBFBF"/></left><right style="thin"><color rgb="FFBFBFBF"/></right><top style="thin"><color rgb="FFBFBFBF"/></top><bottom style="thin"><color rgb="FFBFBFBF"/></bottom><diagonal/></border>';
+
+/** styles.xml 에 필요한 스타일을 덧붙이고 인덱스를 돌려준다 */
+function injectStyles(stylesXml) {
+  let x = stylesXml;
+  let r = appendSection(x, 'fonts', FONT(1, 14) + FONT(0, 11) + FONT(1, 11), 3); x = r.xml; const F = r.base;
+  r = appendSection(x, 'fills', FILL('FFF2F2F2') + FILL('FFFFC7CE') + FILL('FFFFF2CC') + FILL('FFEFEFEF'), 4); x = r.xml; const L = r.base;
+  r = appendSection(x, 'borders', BORDER, 1); x = r.xml; const B = r.base;
+  const xf = (font, fill, border, num, align) =>
+    '<xf numFmtId="' + num + '" fontId="' + font + '" fillId="' + fill + '" borderId="' + border + '" xfId="0"' +
+    ' applyFont="1" applyFill="1" applyBorder="1" applyNumberFormat="1"' + (align ? ' applyAlignment="1"><alignment ' + align + '/></xf>' : '/>');
+  const items = [
+    xf(F + 0, 0, 0, 0, ''),                                   // 0 제목
+    xf(F + 1, 0, 0, 0, ''),                                   // 1 일반문구
+    xf(F + 2, L + 0, B, 0, 'horizontal="center" vertical="center" wrapText="1"'), // 2 표머리
+    xf(F + 1, 0, B, 3, 'horizontal="right"'),                 // 3 숫자
+    xf(F + 1, 0, B, 0, 'horizontal="left"'),                  // 4 문자
+    xf(F + 1, 0, B, 0, 'horizontal="center"'),                // 5 문자 가운데
+    xf(F + 2, L + 3, B, 3, 'horizontal="right"'),             // 6 합계 숫자
+    xf(F + 2, L + 3, B, 0, 'horizontal="center"'),            // 7 합계 문자
+    xf(F + 1, L + 1, B, 3, 'horizontal="right"'),             // 8 음수경고 숫자
+    xf(F + 1, L + 2, B, 0, 'horizontal="left"'),              // 9 신규 문자
+    xf(F + 1, L + 2, B, 3, 'horizontal="right"'),             // 10 신규 숫자
+    xf(F + 1, L + 2, B, 0, 'horizontal="center"'),            // 11 신규 문자 가운데
+  ].join('');
+  r = appendSection(x, 'cellXfs', items, 12); x = r.xml;
+  const S = r.base;
+  return { xml: x, S: { title: S, plain: S + 1, head: S + 2, num: S + 3, txt: S + 4, txtC: S + 5, sumN: S + 6, sumT: S + 7, negN: S + 8, newT: S + 9, newN: S + 10, newC: S + 11 } };
+}
+
+const cS = (ref, st, t) => '<c r="' + ref + '" s="' + st + '" t="inlineStr"><is><t xml:space="preserve">' + esc(t) + '</t></is></c>';
+const cN = (ref, st, v) => '<c r="' + ref + '" s="' + st + '"><v>' + v + '</v></c>';
+const cF = (ref, st, f) => '<c r="' + ref + '" s="' + st + '"><f>' + esc(f) + '</f></c>';
+const cB = (ref, st) => '<c r="' + ref + '" s="' + st + '"/>';
+
+/** page: {landscape:bool}  — 인쇄는 항상 A4 한 페이지에 맞춤 */
+function sheetWrap(dim, cols, rowsXml, page) {
+  const p = page || {};
+  const orient = p.landscape ? 'landscape' : 'portrait';
+  return XML_HEAD +
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+    '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>' +
+    '<dimension ref="' + dim + '"/><sheetViews><sheetView workbookViewId="0"/></sheetViews>' +
+    '<sheetFormatPr defaultRowHeight="16.5"/>' + cols + '<sheetData>' + rowsXml + '</sheetData>' +
+    '<printOptions horizontalCentered="1"/>' +
+    '<pageMargins left="0.24" right="0.24" top="0.43" bottom="0.35" header="0.2" footer="0.2"/>' +
+    '<pageSetup paperSize="9" fitToWidth="1" fitToHeight="1" orientation="' + orient + '" horizontalDpi="600" verticalDpi="600"/>' +
+    '</worksheet>';
+}
+
+/* 새 빈 통합문서 */
+function newWorkbookMap(sheetName) {
+  const m = {};
+  m['[Content_Types].xml'] = bytes(XML_HEAD +
+    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+    '<Default Extension="xml" ContentType="application/xml"/>' +
+    '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+    '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' +
+    '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>');
+  m['_rels/.rels'] = bytes(XML_HEAD +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>');
+  m['xl/workbook.xml'] = bytes(XML_HEAD +
+    '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+    '<sheets><sheet name="' + esc(sheetName) + '" sheetId="1" r:id="rId1"/></sheets>' +
+    '<calcPr calcId="191029" fullCalcOnLoad="1"/></workbook>');
+  m['xl/_rels/workbook.xml.rels'] = bytes(XML_HEAD +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>' +
+    '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>');
+  m['xl/styles.xml'] = bytes(XML_HEAD +
+    '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+    '<fonts count="1"><font><sz val="11"/><color theme="1"/><name val="맑은 고딕"/><family val="3"/><charset val="129"/></font></fonts>' +
+    '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>' +
+    '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+    '<cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs>' +
+    '<cellStyles count="1"><cellStyle name="표준" xfId="0" builtinId="0"/></cellStyles></styleSheet>');
+  m['xl/worksheets/sheet1.xml'] = bytes(sheetWrap('A1', '', ''));
+  return m;
+}
+
+async function xlsxToMap(buf) {
+  const zip = await unzip(buf);
+  const m = {};
+  for (const k of Object.keys(zip)) m[k] = await entryBytes(zip[k]);
+  return m;
+}
+
+/** 통합문서 맵에 시트를 추가하거나 같은 이름 시트를 교체 */
+function upsertSheet(map, sheetName, sheetXml) {
+  const dec = new TextDecoder('utf-8');
+  let wb = dec.decode(map['xl/workbook.xml']);
+  let rels = dec.decode(map['xl/_rels/workbook.xml.rels']);
+  let ct = dec.decode(map['[Content_Types].xml']);
+
+  const relMap = {};
+  rels.replace(/<Relationship\b[^>]*>/g, (tag) => {
+    const id = /Id="([^"]+)"/.exec(tag), tg = /Target="([^"]+)"/.exec(tag);
+    if (id && tg) relMap[id[1]] = tg[1];
+    return tag;
+  });
+
+  let found = null, maxSheetId = 0, maxRid = 0;
+  const sheetTags = wb.match(/<sheet\b[^>]*\/>/g) || [];
+  sheetTags.forEach(tag => {
+    const nm = /name="([^"]*)"/.exec(tag), sid = /sheetId="(\d+)"/.exec(tag), rid = /r:id="(rId\d+)"/.exec(tag);
+    if (sid) maxSheetId = Math.max(maxSheetId, parseInt(sid[1]));
+    if (rid) { const n = parseInt(rid[1].slice(3)); maxRid = Math.max(maxRid, n); }
+    if (nm && dec1(nm[1]) === sheetName) found = rid ? rid[1] : null;
+  });
+  Object.keys(relMap).forEach(id => { const n = parseInt(id.slice(3)); if (!isNaN(n)) maxRid = Math.max(maxRid, n); });
+
+  let path;
+  if (found) {
+    const t = relMap[found] || '';
+    path = t.startsWith('/') ? t.slice(1) : 'xl/' + t;
+    if (!map[path]) path = 'xl/worksheets/' + t.split('/').pop();
+  } else {
+    let k = 1; while (map['xl/worksheets/sheet' + k + '.xml']) k++;
+    path = 'xl/worksheets/sheet' + k + '.xml';
+    const newRid = 'rId' + (maxRid + 1);
+    rels = rels.replace('</Relationships>',
+      '<Relationship Id="' + newRid + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + k + '.xml"/></Relationships>');
+    wb = wb.replace('</sheets>', '<sheet name="' + esc(sheetName) + '" sheetId="' + (maxSheetId + 1) + '" r:id="' + newRid + '"/></sheets>');
+    ct = ct.replace('</Types>', '<Override PartName="/' + path + '" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>');
+  }
+  map[path] = bytes(sheetXml);
+  // 교체한 시트에 딸린 관계 파일은 새 시트가 참조하지 않으므로 제거
+  const relPath = path.replace(/([^/]+)$/, '_rels/$1.rels');
+  if (map[relPath]) delete map[relPath];
+
+  // 계산 체인 제거 + 열릴 때 전체 재계산
+  if (map['xl/calcChain.xml']) {
+    delete map['xl/calcChain.xml'];
+    ct = ct.replace(/<Override[^>]*calcChain\.xml[^>]*\/>/g, '');
+    rels = rels.replace(/<Relationship[^>]*calcChain\.xml[^>]*\/>/g, '');
+  }
+  if (/<calcPr\b[^>]*\/>/.test(wb)) wb = wb.replace(/<calcPr\b[^>]*\/>/, '<calcPr calcId="191029" fullCalcOnLoad="1"/>');
+  else wb = wb.replace('</workbook>', '<calcPr calcId="191029" fullCalcOnLoad="1"/></workbook>');
+
+  map['xl/workbook.xml'] = bytes(wb);
+  map['xl/_rels/workbook.xml.rels'] = bytes(rels);
+  map['[Content_Types].xml'] = bytes(ct);
+  return map;
+}
+const dec1 = (s) => s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'");
+
+async function saveMap(map, filename) {
+  const ordered = {};
+  if (map['[Content_Types].xml']) ordered['[Content_Types].xml'] = map['[Content_Types].xml'];
+  for (const k of Object.keys(map)) if (k !== '[Content_Types].xml') ordered[k] = map[k];
+  const zipped = await makeZip(ordered);
+  const blob = new Blob([zipped], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+}
+
+/* ---------- 6. 상태 ---------- */
+let ST = null;                 // 현재 열려 있는 분기의 작업 상태
+let AGGMAP = null;             // 함께 올린 기존 보험매출집계.xlsx
+let AGGNAME = '보험매출집계.xlsx';
+
+let TAXOFF = new Set();        // 체크 해제한 색칠행(행번호)
+let TAXAMT = {};               // 색칠행 금액 수정값
+let TAXNOTE = {};              // 색칠행 비고
+let TAXMAN = [];               // 직접 추가 / 이월해 온 세금계산서 건
+let REFON = new Set();         // 체크한 환불 후보 키
+let REFAMT = {};               // 환불 후보 금액 수정값
+let REFINS = {};               // 환불 후보 보험사 지정
+let REFNOTE = {};              // 환불 후보 비고
+let REFMAN = [];               // 직접 추가한 환불 건
+let TAXOVR = {};               // 보험사별 세금계산서 합계 직접 수정
+let REFOVR = {};               // 보험사별 환불 합계 직접 수정
+let ASSIGN = {};               // 미매칭 블록 → 보험사
+let CASHOFF = new Set();       // 제외한 검사현황 월
+let UID = 1;
+const nid = () => 'm' + (UID++) + '_' + Date.now().toString(36);
+
+const LS_STORE = 'boheom-store-v2';
+const LS_CARRY = 'boheom-carry-v1';
+let STORE = jload(LS_STORE, {});
+let CARRY = jload(LS_CARRY, []);
+function jload(k, d) { try { const j = JSON.parse(localStorage.getItem(k)); return j == null ? d : j; } catch (e) { return d; } }
+function jsave(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { alert('브라우저 저장 공간에 쓸 수 없습니다.\n' + e.message); } }
+const saveStore = () => jsave(LS_STORE, STORE);
+const saveCarry = () => jsave(LS_CARRY, CARRY);
+
+const refKey = (x) => x.row + '|' + x.kind;
+const insSel = (attr, cur) => '<select ' + attr + '><option value="">(미지정)</option>' +
+  CFG.ins.map(i => '<option value="' + esc(i.name) + '"' + (i.name === cur ? ' selected' : '') + '>' + esc(i.name) + '</option>').join('') + '</select>';
+const num = (v) => Number(String(v == null ? '' : v).replace(/[^0-9-]/g, '')) || 0;
+const PEN = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+const qMonths = () => QUARTER[+$('#cQ').value].m;
+
+/* ---------- 7. 계산 ---------- */
+function computeRows() {
+  const amt = {}, taxA = {}, ref = {};
+  if (ST) {
+    ST.blocks.forEach((b, i) => {
+      const k = ASSIGN[i] !== undefined ? ASSIGN[i] : b.insurer;
+      if (!k) return;
+      amt[k] = (amt[k] || 0) + b.amount;
+      if (taxA[k] === undefined) taxA[k] = 0;
+      b.rows.forEach(r => {
+        if (TAXOFF.has(r.row)) return;
+        taxA[k] += (TAXAMT[r.row] !== undefined ? TAXAMT[r.row] : r.amount);
+      });
+    });
+    ST.refunds.forEach(x => {
+      if (!REFON.has(refKey(x))) return;
+      const k = REFINS[refKey(x)] !== undefined ? REFINS[refKey(x)] : x.insurer;
+      if (!k) return;
+      ref[k] = (ref[k] || 0) + (REFAMT[refKey(x)] !== undefined ? REFAMT[refKey(x)] : x.amount);
+    });
+  }
+  TAXMAN.forEach(m => { if (m.on && m.insurer) taxA[m.insurer] = (taxA[m.insurer] || 0) + num(m.amount); });
+  REFMAN.forEach(m => { if (m.on && m.insurer) ref[m.insurer] = (ref[m.insurer] || 0) + num(m.amount); });
+
+  const mk = (name, code, isNew) => {
+    const a = amt[name] || 0, ta = taxA[name] || 0, ra = ref[name] || 0;
+    const t = TAXOVR[name] !== undefined ? num(TAXOVR[name]) : ta;
+    const f = REFOVR[name] !== undefined ? num(REFOVR[name]) : ra;
+    return {
+      name, code, amount: a,
+      taxAuto: ta, tax: t, taxEdited: TAXOVR[name] !== undefined,
+      refAuto: ra, refund: f, refEdited: REFOVR[name] !== undefined,
+      total: a - t - f, isNew: !!isNew
+    };
+  };
+  const seen = new Set();
+  const rows = CFG.ins.map(i => { seen.add(i.name); return mk(i.name, i.code, i.isNew); });
+  Object.keys(amt).forEach(k => {
+    if (seen.has(k)) return;
+    CFG.ins.push({ name: k, code: '', isNew: true });
+    rows.push(mk(k, '', true));
+  });
+  return rows;
+}
+
+/* ---------- 8. 상태 직렬화 (보관함) ---------- */
+function serializeState() {
+  return {
+    st: {
+      sheetName: ST.sheetName, year: ST.year, quarter: ST.quarter, lastSum: ST.lastSum,
+      blocks: ST.blocks.map(b => ({
+        start: b.start, end: b.end, amount: b.amount, insurer: b.insurer, sample: b.sample,
+        rawNames: [...b.rawNames],
+        rows: b.rows.map(r => ({ row: r.row, bigo: r.bigo, date: r.date, dateTxt: r.dateTxt, corp: r.corp, amount: r.amount }))
+      })),
+      refunds: ST.refunds.map(x => Object.assign({}, x)),
+      cash: ST.cash.map(c => Object.assign({}, c))
+    },
+    ui: {
+      taxoff: [...TAXOFF], taxamt: TAXAMT, taxnote: TAXNOTE, taxman: TAXMAN,
+      refon: [...REFON], refamt: REFAMT, refins: REFINS, refnote: REFNOTE, refman: REFMAN,
+      taxovr: TAXOVR, refovr: REFOVR, assign: ASSIGN, cashoff: [...CASHOFF]
+    }
+  };
+}
+function restoreState(snap) {
+  const d = JSON.parse(JSON.stringify(snap));
+  ST = d.st;
+  ST.blocks.forEach(b => { if (!Array.isArray(b.rawNames)) b.rawNames = []; });
+  ST.taxRows = [];
+  ST.blocks.forEach(b => b.rows.forEach(r => ST.taxRows.push(r)));
+  const u = d.ui || {};
+  TAXOFF = new Set(u.taxoff || []); TAXAMT = u.taxamt || {}; TAXNOTE = u.taxnote || {}; TAXMAN = u.taxman || [];
+  REFON = new Set(u.refon || []); REFAMT = u.refamt || {}; REFINS = u.refins || {}; REFNOTE = u.refnote || {}; REFMAN = u.refman || [];
+  TAXOVR = u.taxovr || {}; REFOVR = u.refovr || {}; ASSIGN = u.assign || {}; CASHOFF = new Set(u.cashoff || []);
+  $('#cYear').value = snap.year; $('#cQ').value = snap.quarter;
+  if (snap.company) $('#cName').value = snap.company;
+  const sl = snap.slip || {};
+  if (sl.date) $('#cDate').value = sl.date; else syncDate();
+  ['inout|cInOut', 'type|cType', 'acc|cAcc', 'acc2|cAcc2', 'item1|cItem1', 'item2|cItem2'].forEach(p => {
+    const [k, id] = p.split('|'); if (sl[k] !== undefined) $('#' + id).value = sl[k];
+  });
+}
+function clearState() {
+  ST = null;
+  TAXOFF = new Set(); TAXAMT = {}; TAXNOTE = {}; TAXMAN = [];
+  REFON = new Set(); REFAMT = {}; REFINS = {}; REFNOTE = {}; REFMAN = [];
+  TAXOVR = {}; REFOVR = {}; ASSIGN = {}; CASHOFF = new Set();
+}
+const snapOf = (y, q) => ((STORE[String(y)] || {})[String(q)] || null);
+const storeYear = () => String(+$('#sYear').value || new Date().getFullYear());
+let SQ = 1;
+
+function isDirty() {
+  if (!ST) return false;
+  const s = snapOf(+$('#cYear').value, +$('#cQ').value);
+  if (!s) return true;
+  try { return JSON.stringify(serializeState()) !== JSON.stringify({ st: s.st, ui: s.ui }); }
+  catch (e) { return true; }
+}
+function storeSave(silent) {
+  if (!ST) { if (!silent) alert('먼저 보험금매출 파일을 올리거나 저장된 분기를 여세요.'); return false; }
+  const y = String(+$('#cYear').value), q = String(+$('#cQ').value);
+  if (!STORE[y]) STORE[y] = {};
+  const had = !!STORE[y][q];
+  const s = serializeState();
+  STORE[y][q] = {
+    savedAt: new Date().toISOString(), company: $('#cName').value,
+    year: +y, quarter: +q,
+    slip: {
+      date: $('#cDate').value, inout: $('#cInOut').value, type: $('#cType').value,
+      acc: $('#cAcc').value, acc2: $('#cAcc2').value, item1: $('#cItem1').value, item2: $('#cItem2').value
+    },
+    rows: computeRows().map(r => ({ name: r.name, code: r.code, amount: r.amount, tax: r.tax, refund: r.refund })),
+    cash: ST.cash.filter(c => !CASHOFF.has(c.sheet)).map(c => ({ month: c.month, amount: c.amount })),
+    st: s.st, ui: s.ui
+  };
+  saveStore();
+  $('#sYear').value = y; SQ = +q;
+  if (!silent) $('#saveMsg').textContent = y + '년 ' + QUARTER[+q].label + ' 보관함에 ' + (had ? '업데이트' : '저장') + '했습니다.';
+  return true;
+}
+function openQuarter(q) {
+  const y = storeYear();
+  if (ST && (+$('#cYear').value !== +y || +$('#cQ').value !== q) && isDirty()) {
+    if (!confirm('현재 열려 있는 ' + $('#cYear').value + '년 ' + QUARTER[+$('#cQ').value].label + ' 에 저장하지 않은 변경이 있습니다.\n저장하지 않고 이동할까요?')) return;
+  }
+  SQ = q;
+  const s = snapOf(y, q);
+  if (s) { restoreState(s); $('#saveMsg').textContent = y + '년 ' + QUARTER[q].label + ' 을(를) 열었습니다. 수정 후 [이 분기 저장 / 업데이트]를 누르세요.'; }
+  else { clearState(); $('#cYear').value = y; $('#cQ').value = q; syncDate(); }
+  render();
+}
+
+/* ---------- 9. 화면 ---------- */
+function ph(id, msg, cols) { $(id).innerHTML = '<tr><td class="c small" colspan="' + cols + '" style="padding:30px 12px">' + msg + '</td></tr>'; }
+
+function render() {
+  renderStore();
+  renderMgr();
+  if (!ST) {
+    $('#notices').innerHTML = '<div class="notice w"><b>작업할 분기를 열어 주세요</b>' +
+      '위쪽에 보험금매출 엑셀 파일을 끌어다 놓거나, <b>2번 연도별 보관함</b>에서 이미 저장한 분기 탭을 누르세요.</div>';
+    ph('#tMain', '보험사별 집계가 여기에 표시됩니다.', 7);
+    ph('#tTax', '세금계산서 발행 중복분이 여기에 표시됩니다.', 9);
+    ph('#tRef', '환불건 차감 후보가 여기에 표시됩니다.', 7);
+    ph('#tCash', '검사현황 현금매출이 여기에 표시됩니다.', 7);
+    updateCarryBadge();
+    return;
+  }
+  const rows = computeRows();
+  renderNotices(rows);
+  renderMain(rows);
+  renderTax();
+  renderRef();
+  renderCash();
+}
+
+/* ---------- 10. 안내 ---------- */
+function renderNotices(rows) {
+  const M = qMonths(); const out = [];
+  const y = +$('#cYear').value, q = +$('#cQ').value;
+  const saved = snapOf(y, q);
+  if (!saved) out.push('<div class="notice e"><b>❗ 이 분기는 아직 보관함에 저장되지 않았습니다</b>검토를 마치면 <b>2번 보관함 → 이 분기 저장 / 업데이트</b>를 눌러 저장하세요. 저장해야 엑셀에 누적됩니다.</div>');
+  else if (isDirty()) out.push('<div class="notice w"><b>⚠ 저장하지 않은 변경이 있습니다</b>' + y + '년 ' + QUARTER[q].label + ' — <b>이 분기 저장 / 업데이트</b>를 눌러 보관함에 반영하세요.</div>');
+
+  out.push('<div class="notice w"><b>⚠ 이전 분기에서 제외된 건이 있는지 확인하세요</b>' +
+    '세금계산서 발행일이 이번 분기를 벗어난 건은 아래 4번 표에 <span class="badge e">분기 밖</span>으로 표시됩니다.<br>' +
+    '지난 분기에서 빠진 금액이 있으면 4번 표의 <b>지난분기 누락분 불러오기</b> 또는 <b>+ 직접 추가</b>로 넣으세요.</div>');
+
+  const un = ST.blocks.map((b, i) => i).filter(i => !(ASSIGN[i] !== undefined ? ASSIGN[i] : ST.blocks[i].insurer));
+  if (un.length) {
+    let h = '<div class="notice e"><b>❗ 보험사를 찾지 못한 블록 ' + un.length + '건 — 아래에서 지정하세요</b><div class="scroll"><table style="margin-top:8px;background:#fff"><tr><th>행 범위</th><th class="l">의뢰인/수취인</th><th class="l">적요 예시</th><th>금액</th><th>보험사 지정</th></tr>';
+    un.forEach(i => {
+      const b = ST.blocks[i];
+      h += '<tr><td class="c">' + b.start + '~' + b.end + '</td><td class="l">' + esc([...b.rawNames].join(', ')) + '</td><td class="l">' + esc(b.sample) + '</td><td class="mono">' + nf(b.amount) + '</td>' +
+        '<td class="c"><select data-assign="' + i + '"><option value="">선택…</option>' +
+        CFG.ins.map(x => '<option value="' + esc(x.name) + '">' + esc(x.name) + '</option>').join('') +
+        '<option value="__new__">＋ 신규 보험사로 추가</option></select></td></tr>';
+    });
+    out.push(h + '</table></div></div>');
+  }
+  const neg = rows.filter(r => r.total < 0);
+  if (neg.length) out.push('<div class="notice e"><b>❗ 총계가 음수인 보험사 ' + neg.length + '건</b>' + neg.map(r => esc(r.name) + ' (' + nf(r.total) + ')').join(', ') + ' — 확인이 필요합니다. 업로드 서식에서는 제외됩니다.</div>');
+  const badMonth = ST.cash.filter(c => c.month && M.indexOf(c.month) < 0);
+  if (badMonth.length) out.push('<div class="notice w"><b>⚠ 선택한 분기와 다른 달의 검사현황이 있습니다</b>' + badMonth.map(c => esc(c.sheet)).join(', ') + '</div>');
+  const part = ST.refunds.filter(x => x.partial && !REFON.has(refKey(x)));
+  if (part.length) out.push('<div class="notice w"><b>⚠ 일부 환불 ' + part.length + '건 — 금액을 직접 넣어야 합니다</b>' +
+    part.map(x => '원본 ' + x.row + '행 (' + esc(x.bigo || x.name) + ' / 입금 ' + nf(x.gross || 0) + ')').join(' · ') + '</div>');
+  if (!un.length && !neg.length) out.push('<div class="notice ok">보험사 매칭 ' + ST.blocks.length + '개 블록 · 세금계산서 색칠행 ' + (ST.taxRows || []).length + '건 · 환불 후보 ' + ST.refunds.length + '건 · 검사현황 ' + ST.cash.length + '개월</div>');
+  $('#notices').innerHTML = out.join('');
+  document.querySelectorAll('[data-assign]').forEach(s => s.onchange = () => {
+    const i = +s.dataset.assign;
+    if (s.value === '__new__') {
+      const b = ST.blocks[i];
+      const nm = prompt('새 보험사명 (보험매출집계 표시용)', [...b.rawNames][0] || '');
+      if (!nm) { s.value = ''; return; }
+      CFG.ins.push({ name: nm, code: prompt('거래처코드 (위하고)', '') || '', isNew: true }); saveCfg();
+      ASSIGN[i] = nm;
+    } else ASSIGN[i] = s.value;
+    render();
+  });
+}
+
+/* ---------- 11. 3번 보험사별 집계 ---------- */
+function renderMain(rows) {
+  const M = qMonths();
+  let h = '<tr><th style="width:52px">번호</th><th class="l">보험사명</th><th>' + M[0] + '월 ~ ' + M[2] + '월</th>' +
+    '<th>세금계산서 발행<br><span class="thsub">(자동 · 수정 가능)</span></th>' +
+    '<th>환불건(배상책임) 차감<br><span class="thsub">(자동 · 수정 가능)</span></th>' +
+    '<th>총계</th><th>코드</th></tr>';
+  let s1 = 0, s2 = 0, s3 = 0, s4 = 0;
+  rows.forEach((r, i) => {
+    s1 += r.amount; s2 += r.tax; s3 += r.refund; s4 += r.total;
+    const cls = r.total < 0 ? 'neg' : (r.isNew ? 'new' : '');
+    h += '<tr class="' + cls + '"><td class="c">' + (i + 1) + '</td>' +
+      '<td class="l"><input class="txt" data-fld="name" data-i="' + i + '" value="' + esc(r.name) + '"></td>' +
+      '<td class="mono">' + nf(r.amount) + '</td>' +
+      '<td><span class="edit">' + PEN + '<input data-fld="tax" data-i="' + i + '" class="' + (r.taxEdited ? 'ed' : '') + '" value="' + nf(r.tax) + '" title="직접 수정 가능. 비우면 자동 합계로 되돌아갑니다."></span></td>' +
+      '<td><span class="edit">' + PEN + '<input data-fld="refund" data-i="' + i + '" class="' + (r.refEdited ? 'ed' : '') + '" value="' + nf(r.refund) + '" title="직접 수정 가능. 비우면 자동 합계로 되돌아갑니다."></span></td>' +
+      '<td class="mono"><b>' + nf(r.total) + '</b>' + (r.total < 0 ? ' <span class="badge e">검토</span>' : '') + '</td>' +
+      '<td class="c"><input data-fld="code" data-i="' + i + '" value="' + esc(r.code == null ? '' : r.code) + '" style="width:74px;text-align:center"></td></tr>';
+  });
+  h += '<tr class="sum"><td class="c">합계</td><td class="c">' + rows.filter(r => r.total > 0).length + '개 보험사</td>' +
+    '<td class="mono">' + nf(s1) + '</td><td class="mono">' + nf(s2) + '</td><td class="mono">' + nf(s3) + '</td>' +
+    '<td class="mono">' + nf(s4) + '</td><td class="c">—</td></tr>';
+  $('#tMain').innerHTML = h;
+  $('#tMain').querySelectorAll('input[data-fld]').forEach(el => {
+    el.onchange = () => {
+      const i = +el.dataset.i, f = el.dataset.fld, rows2 = computeRows(), nm = rows2[i].name;
+      if (f === 'tax' || f === 'refund') {
+        const OVR = f === 'tax' ? TAXOVR : REFOVR;
+        const auto = f === 'tax' ? rows2[i].taxAuto : rows2[i].refAuto;
+        const raw = el.value.replace(/[^0-9-]/g, '');
+        if (raw === '' || Number(raw) === auto) delete OVR[nm]; else OVR[nm] = Number(raw);
+      } else {
+        const t = CFG.ins.find(x => x.name === nm);
+        if (t) {
+          if (f === 'name') {
+            const nn = el.value;
+            [TAXOVR, REFOVR].forEach(O => { if (O[nm] !== undefined) { O[nn] = O[nm]; delete O[nm]; } });
+            CFG.bigo.forEach(a => { if (a[1] === nm) a[1] = nn; });
+            CFG.name.forEach(a => { if (a[1] === nm) a[1] = nn; });
+            Object.keys(ASSIGN).forEach(k => { if (ASSIGN[k] === nm) ASSIGN[k] = nn; });
+            Object.keys(REFINS).forEach(k => { if (REFINS[k] === nm) REFINS[k] = nn; });
+            TAXMAN.concat(REFMAN).forEach(m => { if (m.insurer === nm) m.insurer = nn; });
+            ST.blocks.forEach(b => { if (b.insurer === nm) b.insurer = nn; });
+            ST.refunds.forEach(x => { if (x.insurer === nm) x.insurer = nn; });
+            t.name = nn;
+          } else t[f] = el.value;
+          saveCfg();
+        }
+      }
+      render();
+    };
+  });
+}
+
+/* ---------- 12. 별칭 관리 ---------- */
+function aliasTable(kind, arr, elId, keyLabel) {
+  let h = '<tr><th class="l" style="width:38%">' + keyLabel + '</th><th class="l">→ 보험사</th><th class="c" style="width:104px">순서 / 삭제</th></tr>';
+  if (!arr.length) h += '<tr><td colspan="3" class="c small">등록된 별칭이 없습니다.</td></tr>';
+  arr.forEach((a, i) => {
+    const known = CFG.ins.some(x => x.name === a[1]);
+    h += '<tr><td class="l"><input class="txt" data-al="' + kind + '" data-k="0" data-i="' + i + '" value="' + esc(a[0]) + '"></td>' +
+      '<td class="l"><select data-al="' + kind + '" data-k="1" data-i="' + i + '">' +
+      (known ? '' : '<option selected value="' + esc(a[1]) + '">' + esc(a[1]) + ' (목록에 없음)</option>') +
+      CFG.ins.map(x => '<option value="' + esc(x.name) + '"' + (known && x.name === a[1] ? ' selected' : '') + '>' + esc(x.name) + '</option>').join('') +
+      '</select></td>' +
+      '<td class="c"><button class="mini" data-mv="' + kind + ':' + i + ':-1">↑</button> ' +
+      '<button class="mini" data-mv="' + kind + ':' + i + ':1">↓</button> ' +
+      '<button class="mini del" data-del="' + kind + ':' + i + '">✕</button></td></tr>';
+  });
+  $(elId).innerHTML = h;
+}
+function renderMgr() {
+  aliasTable('b', CFG.bigo, '#tBigo', '적요 접두어');
+  aliasTable('n', CFG.name, '#tName', '의뢰인/수취인명');
+  const arrOf = (k) => (k === 'b' ? CFG.bigo : CFG.name);
+  document.querySelectorAll('[data-al]').forEach(el => {
+    el.onchange = () => { arrOf(el.dataset.al)[+el.dataset.i][+el.dataset.k] = el.value; saveCfg(); reanalyze(); };
+  });
+  document.querySelectorAll('[data-mv]').forEach(el => {
+    el.onclick = () => {
+      const [k, i, d] = el.dataset.mv.split(':');
+      const a = arrOf(k), n = +i, j = n + (+d);
+      if (j < 0 || j >= a.length) return;
+      const t = a[n]; a[n] = a[j]; a[j] = t; saveCfg(); reanalyze();
+    };
+  });
+  document.querySelectorAll('[data-del]').forEach(el => {
+    el.onclick = () => {
+      const [k, i] = el.dataset.del.split(':');
+      const a = arrOf(k);
+      if (!confirm('별칭 "' + a[+i][0] + '" 을(를) 삭제할까요?')) return;
+      a.splice(+i, 1); saveCfg(); reanalyze();
+    };
+  });
+}
+
+/* ---------- 13. 4번 세금계산서 ---------- */
+function outOfQuarter(dateSerial) {
+  if (!dateSerial) return null;
+  const d = serialToDate(dateSerial);
+  const Y = +$('#cYear').value, M = qMonths();
+  return (d.getUTCFullYear() !== Y || M.indexOf(d.getUTCMonth() + 1) < 0);
+}
+function renderTax() {
+  let h = '<tr><th style="width:48px">포함</th><th style="width:60px">출처</th><th class="l">적요 / 내용</th>' +
+    '<th class="l" style="width:196px">보험사</th><th style="width:110px">발행일</th><th class="l">상호</th>' +
+    '<th style="width:148px">금액 (차감)</th><th class="l" style="width:200px">비고</th><th class="c" style="width:96px">조작</th></tr>';
+  let tot = 0, n = 0, any = false;
+  ST.blocks.forEach((b, bi) => {
+    const k = ASSIGN[bi] !== undefined ? ASSIGN[bi] : b.insurer;
+    b.rows.forEach(r => {
+      any = true;
+      const on = !TAXOFF.has(r.row);
+      const amount = TAXAMT[r.row] !== undefined ? TAXAMT[r.row] : r.amount;
+      if (on) { tot += amount; n++; }
+      const oq = outOfQuarter(r.date);
+      const bad = oq === null ? '<span class="badge w">날짜없음</span>' : (oq ? '<span class="badge e">분기 밖</span>' : '');
+      h += '<tr' + (on ? '' : ' style="opacity:.55"') + '><td class="c"><input type="checkbox" class="chk" data-tax="' + r.row + '"' + (on ? ' checked' : '') + '></td>' +
+        '<td class="c small">' + r.row + '행</td><td class="l">' + esc(r.bigo) + '</td>' +
+        '<td class="l small">' + esc(k || '(미지정)') + '</td>' +
+        '<td class="c">' + esc(r.dateTxt || '-') + '</td><td class="l">' + esc(r.corp) + '</td>' +
+        '<td><span class="edit">' + PEN + '<input data-taxamt="' + r.row + '" class="' + (TAXAMT[r.row] !== undefined ? 'ed' : '') + '" value="' + nf(amount) + '"></span></td>' +
+        '<td class="l"><span class="edit">' + PEN + '<input class="txt' + (TAXNOTE[r.row] ? ' ed' : '') + '" data-taxnote="' + r.row + '" value="' + esc(TAXNOTE[r.row] || '') + '" placeholder="비고 입력"></span></td>' +
+        '<td class="c">' + bad + ' <button class="mini mv" data-carry="' + r.row + '" title="다른 분기 몫으로 보관">이월</button></td></tr>';
+    });
+  });
+  TAXMAN.forEach(m => {
+    any = true;
+    if (m.on) { tot += num(m.amount); n++; }
+    h += '<tr class="man"' + (m.on ? '' : ' style="opacity:.55"') + '><td class="c"><input type="checkbox" class="chk" data-taxm="' + m.id + '"' + (m.on ? ' checked' : '') + '></td>' +
+      '<td class="c"><span class="badge i">' + (m.from ? '이월' : '직접') + '</span></td>' +
+      '<td class="l"><input class="txt" data-taxmf="memo" data-id="' + m.id + '" value="' + esc(m.memo || '') + '" placeholder="적요 / 내용"></td>' +
+      '<td class="l">' + insSel('data-taxmf="insurer" data-id="' + m.id + '"', m.insurer) + '</td>' +
+      '<td class="c"><input data-taxmf="dateTxt" data-id="' + m.id + '" value="' + esc(m.dateTxt || '') + '" placeholder="2026-01-20" style="text-align:center"></td>' +
+      '<td class="l"><input class="txt" data-taxmf="corp" data-id="' + m.id + '" value="' + esc(m.corp || '') + '" placeholder="상호"></td>' +
+      '<td><span class="edit">' + PEN + '<input data-taxmf="amount" data-id="' + m.id + '" value="' + nf(m.amount) + '"></span></td>' +
+      '<td class="l"><span class="edit">' + PEN + '<input class="txt' + (m.note ? ' ed' : '') + '" data-taxmf="note" data-id="' + m.id + '" value="' + esc(m.note || '') + '" placeholder="비고 입력"></span></td>' +
+      '<td class="c"><button class="mini del" data-taxdel="' + m.id + '">✕ 삭제</button></td></tr>';
+  });
+  if (!any) h += '<tr><td colspan="9" class="c small" style="padding:22px">색칠된 행이 없습니다. 필요하면 <b>+ 직접 추가</b>로 넣으세요.</td></tr>';
+  h += '<tr class="sum"><td class="c" colspan="6">선택 합계 (' + n + '건)</td><td class="mono">' + nf(tot) + '</td><td class="c">—</td><td class="c">—</td></tr>';
+  $('#tTax').innerHTML = h;
+
+  const clr = (ins) => { if (ins) delete TAXOVR[ins]; };
+  const insOfRow = (row) => {
+    let k = null;
+    ST.blocks.forEach((b, bi) => { if (b.rows.some(x => x.row === row)) k = ASSIGN[bi] !== undefined ? ASSIGN[bi] : b.insurer; });
+    return k;
+  };
+  $('#tTax').querySelectorAll('[data-tax]').forEach(el => el.onchange = () => {
+    const r = +el.dataset.tax;
+    if (el.checked) TAXOFF.delete(r); else TAXOFF.add(r);
+    clr(insOfRow(r)); render();
+  });
+  $('#tTax').querySelectorAll('[data-taxamt]').forEach(el => el.onchange = () => {
+    const r = +el.dataset.taxamt, raw = el.value.replace(/[^0-9-]/g, '');
+    let orig = null;
+    ST.blocks.forEach(b => b.rows.forEach(x => { if (x.row === r) orig = x.amount; }));
+    if (raw === '' || Number(raw) === orig) delete TAXAMT[r]; else TAXAMT[r] = Number(raw);
+    clr(insOfRow(r)); render();
+  });
+  $('#tTax').querySelectorAll('[data-taxnote]').forEach(el => el.onchange = () => {
+    const r = +el.dataset.taxnote;
+    if (el.value.trim() === '') delete TAXNOTE[r]; else TAXNOTE[r] = el.value;
+    render();
+  });
+  $('#tTax').querySelectorAll('[data-carry]').forEach(el => el.onclick = () => {
+    const r = +el.dataset.carry;
+    let src = null; const ins = insOfRow(r);
+    ST.blocks.forEach(b => b.rows.forEach(x => { if (x.row === r) src = x; }));
+    if (!src) return;
+    const Y = +$('#cYear').value, Q = +$('#cQ').value;
+    const nq = Q === 4 ? 1 : Q + 1, ny = Q === 4 ? Y + 1 : Y;
+    const ans = prompt('이 건을 어느 분기 몫으로 보관할까요?\n형식: 연도-분기  (예: ' + ny + '-' + nq + ')', ny + '-' + nq);
+    if (!ans) return;
+    const m = /^(\d{4})\s*-\s*([1-4])$/.exec(ans.trim());
+    if (!m) { alert('형식이 올바르지 않습니다. 예: 2026-2'); return; }
+    CARRY.push({
+      id: nid(), y: +m[1], q: +m[2], insurer: ins || '', amount: src.amount,
+      dateTxt: src.dateTxt || '', corp: src.corp || '', memo: src.bigo || '',
+      note: TAXNOTE[r] || '', from: Y + '년 ' + QUARTER[Q].label + ' ' + r + '행'
+    });
+    saveCarry();
+    TAXOFF.add(r); clr(ins);
+    alert(m[1] + '년 ' + m[2] + '분기 몫으로 보관했습니다.\n이 분기 차감에서는 빠집니다.');
+    render();
+  });
+  $('#tTax').querySelectorAll('[data-taxm]').forEach(el => el.onchange = () => {
+    const m = TAXMAN.find(x => x.id === el.dataset.taxm); if (!m) return;
+    m.on = el.checked; clr(m.insurer); render();
+  });
+  $('#tTax').querySelectorAll('[data-taxmf]').forEach(el => el.onchange = () => {
+    const m = TAXMAN.find(x => x.id === el.dataset.id); if (!m) return;
+    const f = el.dataset.taxmf;
+    clr(m.insurer);
+    m[f] = f === 'amount' ? num(el.value) : el.value;
+    clr(m.insurer); render();
+  });
+  $('#tTax').querySelectorAll('[data-taxdel]').forEach(el => el.onclick = () => {
+    const i = TAXMAN.findIndex(x => x.id === el.dataset.taxdel); if (i < 0) return;
+    clr(TAXMAN[i].insurer);
+    const cid = TAXMAN[i].carryId;
+    if (cid) { const c = CARRY.find(x => x.id === cid); if (c) { delete c.used; saveCarry(); } }
+    TAXMAN.splice(i, 1); render();
+  });
+  updateCarryBadge();
+}
+function updateCarryBadge() {
+  const Y = +$('#cYear').value, Q = +$('#cQ').value;
+  const list = CARRY.filter(c => c.y === Y && c.q === Q && !c.used && !TAXMAN.some(m => m.carryId === c.id));
+  const el = $('#carryCnt');
+  if (el) { if (list.length) { el.textContent = list.length; el.classList.remove('hide'); } else el.classList.add('hide'); }
+  return list;
+}
+function loadCarry() {
+  const list = updateCarryBadge();
+  if (!list.length) { alert('이번 분기 몫으로 보관된 누락분이 없습니다.\n\n지난 분기를 열어 4번 표에서 해당 건의 [이월] 버튼을 눌러 두면 여기서 불러올 수 있습니다.'); return; }
+  list.forEach(c => {
+    c.used = true;
+    TAXMAN.push({
+      id: nid(), carryId: c.id, on: true, insurer: c.insurer, amount: c.amount,
+      dateTxt: c.dateTxt, corp: c.corp, memo: c.memo || '',
+      note: (c.note ? c.note + ' / ' : '') + '이월: ' + c.from, from: c.from
+    });
+  });
+  saveCarry();
+  TAXOVR = {};
+  alert(list.length + '건을 불러왔습니다.');
+  render();
+}
+
+/* ---------- 14. 5번 환불 ---------- */
+function renderRef() {
+  let h = '<tr><th style="width:48px">차감</th><th style="width:60px">출처</th><th class="l">적요 / 의뢰인 · 내용</th>' +
+    '<th class="l" style="width:196px">보험사</th><th style="width:148px">차감금액</th>' +
+    '<th class="l" style="width:250px">비고</th><th class="c" style="width:86px">조작</th></tr>';
+  let tot = 0, n = 0;
+  ST.refunds.forEach(x => {
+    const k = refKey(x), on = REFON.has(k);
+    const amount = REFAMT[k] !== undefined ? REFAMT[k] : x.amount;
+    if (on) { tot += num(amount); n++; }
+    const ins = REFINS[k] !== undefined ? REFINS[k] : x.insurer;
+    const note = REFNOTE[k] !== undefined ? REFNOTE[k] : (x.kind + ' · ' + x.memo);
+    h += '<tr' + (on ? '' : ' style="opacity:.6"') + '><td class="c"><input type="checkbox" class="chk" data-ref="' + esc(k) + '"' + (on ? ' checked' : '') + '></td>' +
+      '<td class="c small">' + x.row + '행</td>' +
+      '<td class="l">' + esc((x.bigo || '') + (x.name ? ' / ' + x.name : '')) + (x.partial ? ' <span class="badge w">일부 환불 · 금액 입력</span>' : '') + '</td>' +
+      '<td class="l">' + insSel('data-refins="' + esc(k) + '"', ins) + '</td>' +
+      '<td><span class="edit">' + PEN + '<input data-refamt="' + esc(k) + '" class="' + (REFAMT[k] !== undefined ? 'ed' : '') + '" value="' + (amount ? nf(amount) : '') + '" placeholder="' + (x.partial ? '실제 환불액' : '0') + '"></span></td>' +
+      '<td class="l"><span class="edit">' + PEN + '<input class="txt' + (REFNOTE[k] !== undefined ? ' ed' : '') + '" data-refnote="' + esc(k) + '" value="' + esc(note) + '" placeholder="비고 입력"></span></td>' +
+      '<td class="c">—</td></tr>';
+  });
+  REFMAN.forEach(m => {
+    if (m.on) { tot += num(m.amount); n++; }
+    h += '<tr class="man"' + (m.on ? '' : ' style="opacity:.6"') + '><td class="c"><input type="checkbox" class="chk" data-refm="' + m.id + '"' + (m.on ? ' checked' : '') + '></td>' +
+      '<td class="c"><span class="badge i">직접</span></td>' +
+      '<td class="l"><input class="txt" data-refmf="memo" data-id="' + m.id + '" value="' + esc(m.memo || '') + '" placeholder="예: 4/1 DB손보7337 424,600 중 환급"></td>' +
+      '<td class="l">' + insSel('data-refmf="insurer" data-id="' + m.id + '"', m.insurer) + '</td>' +
+      '<td><span class="edit">' + PEN + '<input data-refmf="amount" data-id="' + m.id + '" value="' + nf(m.amount) + '"></span></td>' +
+      '<td class="l"><span class="edit">' + PEN + '<input class="txt' + (m.note ? ' ed' : '') + '" data-refmf="note" data-id="' + m.id + '" value="' + esc(m.note || '') + '" placeholder="비고 입력"></span></td>' +
+      '<td class="c"><button class="mini del" data-refdel="' + m.id + '">✕ 삭제</button></td></tr>';
+  });
+  if (!ST.refunds.length && !REFMAN.length) h += '<tr><td colspan="7" class="c small" style="padding:22px">원본 파일에서 찾은 환불 후보가 없습니다. 차감할 건이 있으면 <b>+ 직접 추가</b>로 넣으세요.</td></tr>';
+  h += '<tr class="sum"><td class="c" colspan="4">선택 합계 (' + n + '건)</td><td class="mono">' + nf(tot) + '</td><td class="c">—</td><td class="c">—</td></tr>';
+  $('#tRef').innerHTML = h;
+
+  const clr = (k) => {
+    const x = ST.refunds.find(y => refKey(y) === k); if (!x) return;
+    const ins = REFINS[k] !== undefined ? REFINS[k] : x.insurer;
+    if (ins) delete REFOVR[ins];
+  };
+  $('#tRef').querySelectorAll('[data-ref]').forEach(el => el.onchange = () => {
+    const k = el.dataset.ref; if (el.checked) REFON.add(k); else REFON.delete(k); clr(k); render();
+  });
+  $('#tRef').querySelectorAll('[data-refamt]').forEach(el => el.onchange = () => {
+    const k = el.dataset.refamt; REFAMT[k] = num(el.value); clr(k); render();
+  });
+  $('#tRef').querySelectorAll('[data-refnote]').forEach(el => el.onchange = () => {
+    REFNOTE[el.dataset.refnote] = el.value; render();
+  });
+  $('#tRef').querySelectorAll('[data-refins]').forEach(el => el.onchange = () => {
+    const k = el.dataset.refins; clr(k); REFINS[k] = el.value; delete REFOVR[el.value]; render();
+  });
+  $('#tRef').querySelectorAll('[data-refm]').forEach(el => el.onchange = () => {
+    const m = REFMAN.find(x => x.id === el.dataset.refm); if (!m) return;
+    m.on = el.checked; if (m.insurer) delete REFOVR[m.insurer]; render();
+  });
+  $('#tRef').querySelectorAll('[data-refmf]').forEach(el => el.onchange = () => {
+    const m = REFMAN.find(x => x.id === el.dataset.id); if (!m) return;
+    if (m.insurer) delete REFOVR[m.insurer];
+    const f = el.dataset.refmf;
+    m[f] = f === 'amount' ? num(el.value) : el.value;
+    if (m.insurer) delete REFOVR[m.insurer];
+    render();
+  });
+  $('#tRef').querySelectorAll('[data-refdel]').forEach(el => el.onclick = () => {
+    const i = REFMAN.findIndex(x => x.id === el.dataset.refdel); if (i < 0) return;
+    if (REFMAN[i].insurer) delete REFOVR[REFMAN[i].insurer];
+    REFMAN.splice(i, 1); render();
+  });
+}
+
+/* ---------- 15. 6번 현금매출 ---------- */
+function renderCash() {
+  const Y = +$('#cYear').value;
+  let h = '<tr><th style="width:48px">포함</th><th style="width:70px">월</th><th class="l">시트</th>' +
+    '<th>현금 (공급대가)</th><th>공급가액</th><th>부가세</th><th style="width:120px">전표일자</th></tr>';
+  let tot = 0;
+  ST.cash.forEach(c => {
+    const on = !CASHOFF.has(c.sheet);
+    if (on) tot += c.amount;
+    const sv = round(c.amount / 1.1);
+    h += '<tr' + (on ? '' : ' style="opacity:.6"') + '><td class="c"><input type="checkbox" class="chk" data-cash="' + esc(c.sheet) + '"' + (on ? ' checked' : '') + '></td>' +
+      '<td class="c">' + (c.month || '?') + '월</td><td class="l">' + esc(c.sheet) + '</td>' +
+      '<td class="mono">' + nf(c.amount) + '</td><td class="mono">' + nf(sv) + '</td><td class="mono">' + nf(c.amount - sv) + '</td>' +
+      '<td class="c">' + Y + '-' + String(c.month || 1).padStart(2, '0') + '-01</td></tr>';
+  });
+  if (!ST.cash.length) h += '<tr><td colspan="7" class="c small" style="padding:22px">검사현황 시트를 찾지 못했습니다.</td></tr>';
+  h += '<tr class="sum"><td class="c" colspan="3">합계</td><td class="mono">' + nf(tot) + '</td><td class="mono">' + nf(round(tot / 1.1)) + '</td><td class="mono">' + nf(tot - round(tot / 1.1)) + '</td><td class="c">—</td></tr>';
+  $('#tCash').innerHTML = h;
+  $('#tCash').querySelectorAll('[data-cash]').forEach(el => el.onchange = () => {
+    const k = el.dataset.cash; if (el.checked) CASHOFF.delete(k); else CASHOFF.add(k); render();
+  });
+}
+
+/* ---------- 16. 2번 보관함 ---------- */
+function renderStore() {
+  const y = storeYear();
+  const openY = ST ? +$('#cYear').value : null, openQ = ST ? +$('#cQ').value : null;
+  let qb = '';
+  for (let q = 1; q <= 4; q++) {
+    const s = snapOf(y, q);
+    const isOpen = (openY === +y && openQ === q);
+    qb += '<button class="qbtn' + (isOpen ? ' on' : '') + (s ? '' : ' empty') + '" data-q="' + q + '">' +
+      q + '분기<span style="font-weight:500;margin-left:5px;font-size:12px">' + QUARTER[q].label + '</span>' +
+      (s ? '<span class="dot"></span>' : '') + '</button>';
+  }
+  $('#qbtns').innerHTML = qb;
+  $('#qbtns').querySelectorAll('[data-q]').forEach(b => b.onclick = () => openQuarter(+b.dataset.q));
+
+  const rowsOf = (s) => {
+    let a = 0, t = 0, f = 0, cnt = 0;
+    s.rows.forEach(r => { a += r.amount; t += r.tax; f += r.refund; if (r.amount - r.tax - r.refund > 0) cnt++; });
+    const cash = (s.cash || []).reduce((x, c) => x + c.amount, 0);
+    return { a, t, f, tot: a - t - f, cnt, cash };
+  };
+  let h = '<div class="scroll"><table><tr><th style="width:130px">분기</th><th>분기금액</th><th>세금계산서 발행</th>' +
+    '<th>환불건 차감</th><th>총계</th><th>보험사</th><th>현금매출</th><th class="l" style="width:190px">저장 시각</th><th class="c" style="width:96px">상태</th></tr>';
+  let has = false;
+  for (let q = 1; q <= 4; q++) {
+    const s = snapOf(y, q);
+    const isOpen = (openY === +y && openQ === q);
+    if (!s) {
+      h += '<tr style="opacity:.55"><td class="c">' + q + '분기 <span class="small">' + QUARTER[q].label + '</span></td>' +
+        '<td colspan="7" class="c small">저장된 내용 없음 — 해당 분기 파일을 올려 검토한 뒤 저장하세요</td>' +
+        '<td class="c">' + (isOpen ? '<span class="badge e">미저장</span>' : '—') + '</td></tr>';
+      continue;
+    }
+    has = true;
+    const g = rowsOf(s);
+    h += '<tr' + (isOpen ? ' class="man"' : '') + '><td class="c"><b>' + q + '분기</b> <span class="small">' + QUARTER[q].label + '</span></td>' +
+      '<td class="mono">' + nf(g.a) + '</td><td class="mono">' + nf(g.t) + '</td><td class="mono">' + nf(g.f) + '</td>' +
+      '<td class="mono"><b>' + nf(g.tot) + '</b></td><td class="c">' + g.cnt + '개</td><td class="mono">' + nf(g.cash) + '</td>' +
+      '<td class="l small">' + new Date(s.savedAt).toLocaleString('ko-KR') + '</td>' +
+      '<td class="c">' + (isOpen ? (isDirty() ? '<span class="badge w">수정중</span>' : '<span class="badge i">열림</span>') : '<span class="badge" style="background:#eef4f0;color:#2f7d5d;border:1px solid #cfe1d7">저장됨</span>') + '</td></tr>';
+  }
+  h += '</table></div>';
+  h += '<div class="small" style="margin-top:10px">' +
+    (has ? '분기 탭을 누르면 저장된 내용이 아래 <b>3~6번</b>에 그대로 열립니다. 고친 뒤 <b>이 분기 저장 / 업데이트</b>를 누르면 갱신됩니다.'
+      : '아직 저장된 분기가 없습니다. 보험금매출 파일을 올려 검토한 뒤 <b>이 분기 저장 / 업데이트</b>를 누르세요.') + '</div>';
+  $('#storeBody').innerHTML = h;
+}
+
+/* ---------- 17. 엑셀 시트 ---------- */
+function buildAggSheetXml(rows, S, meta) {
+  const Y = meta.year, Q = QUARTER[meta.quarter], M = Q.m;
+  let out = '';
+  out += '<row r="1" ht="40" customHeight="1"/>';
+  out += '<row r="2" ht="22" customHeight="1">' + cS('A2', S.title, '보험금 매출 내역 (' + Y + '년 ' + Q.title + ')') + '</row>';
+  out += '<row r="4">' + cS('A4', S.plain, '상호 : ' + (meta.company || '')) + '</row>';
+  out += '<row r="5" ht="34" customHeight="1">' + cS('A5', S.head, '') + cS('B5', S.head, '보험사명') +
+    cS('C5', S.head, M[0] + '월 ~ ' + M[2] + '월') + cS('D5', S.head, '세금계산서발행') +
+    cS('E5', S.head, '환불건(배상책임)\n차감') + cS('F5', S.head, '총계') + cS('G5', S.head, '코드') + '</row>';
+  rows.forEach((r, i) => {
+    const rr = 6 + i, total = r.amount - r.tax - r.refund;
+    out += '<row r="' + rr + '">' + cN('A' + rr, S.txtC, i + 1) + cS('B' + rr, S.txt, r.name) +
+      cN('C' + rr, S.num, r.amount) + cN('D' + rr, S.num, r.tax) + cN('E' + rr, S.num, r.refund) +
+      cF('F' + rr, total < 0 ? S.negN : S.num, 'C' + rr + '-D' + rr + '-E' + rr) +
+      (r.code === '' || r.code == null ? cB('G' + rr, S.txtC) : (/^\d+$/.test(String(r.code)) ? cN('G' + rr, S.txtC, r.code) : cS('G' + rr, S.txtC, String(r.code)))) + '</row>';
+  });
+  const sr = 6 + rows.length, er = sr + 1;
+  out += '<row r="' + sr + '">' + cB('A' + sr, S.sumT) + cS('B' + sr, S.sumT, '합계') +
+    cF('C' + sr, S.sumN, 'SUM(C6:C' + (sr - 1) + ')') + cF('D' + sr, S.sumN, 'SUM(D6:D' + (sr - 1) + ')') +
+    cF('E' + sr, S.sumN, 'SUM(E6:E' + (sr - 1) + ')') + cF('F' + sr, S.sumN, 'C' + sr + '-D' + sr + '-E' + sr) +
+    cB('G' + sr, S.sumT) + '</row>';
+  out += '<row r="' + er + '">' + cS('B' + er, S.plain, '(세금계산서 차감 후)') + cF('D' + er, S.num, 'C' + sr + '-D' + sr) + '</row>';
+  const cols = '<cols><col min="1" max="1" width="5.5" customWidth="1"/>' +
+    '<col min="2" max="2" width="33.88" customWidth="1"/><col min="3" max="3" width="14" customWidth="1"/>' +
+    '<col min="4" max="4" width="14.75" customWidth="1"/><col min="5" max="5" width="16.13" customWidth="1"/>' +
+    '<col min="6" max="6" width="14" customWidth="1"/><col min="7" max="7" width="9" customWidth="1"/></cols>';
+  return sheetWrap('A1:G' + er, cols, out, { landscape: false });
+}
+
+const UP_HEAD = ['년도', '월', '일', '매입매출구분(1-매출/2-매입)', '과세유형', '불공제사유', '신용카드거래처코드', '신용카드사명',
+  '신용카드(가맹점)번호', '거래처명', '사업자(주민)등록번호', '공급가액', '부가세', '품명', '전자세금(1.전자)', '기본계정', '상대계정', '현금영수증 승인번호'];
+
+function uploadRowsFrom(snap) {
+  const Q = QUARTER[snap.quarter], M = Q.m, sl = snap.slip || {};
+  const d = (sl.date || (snap.year + '-' + String(M[0]).padStart(2, '0') + '-01')).split('-');
+  const io = sl.inout || '1', ty = sl.type || '14', a1 = sl.acc || '412', a2 = sl.acc2 || '108';
+  const it1 = sl.item1 || '보험매출', it2 = sl.item2 || '현금매출';
+  const list = [];
+  snap.rows.forEach(r => {
+    const total = r.amount - r.tax - r.refund;
+    if (!(total > 0)) return;
+    const sv = round(total / 1.1);
+    list.push([+d[0], +d[1], +d[2], io, ty, '', '', '', '', r.name, '', sv, total - sv, it1, '', a1, a2, '']);
+  });
+  (snap.cash || []).forEach(c => {
+    if (!(c.amount > 0)) return;
+    const sv = round(c.amount / 1.1);
+    list.push([snap.year, c.month || M[0], 1, io, ty, '', '', '', '', it2, '', sv, c.amount - sv, it2, '', a1, a2, '']);
+  });
+  return list;
+}
+function buildUploadSheetXml(list, S) {
+  let out = '<row r="1" ht="30" customHeight="1">';
+  UP_HEAD.forEach((t, i) => { out += cS(colLetter(i + 1) + '1', S.head, t); });
+  out += '</row>';
+  list.forEach((row, ri) => {
+    const rr = ri + 2;
+    out += '<row r="' + rr + '">';
+    row.forEach((v, ci) => {
+      const ref = colLetter(ci + 1) + rr;
+      if (v === '' || v == null) { out += cB(ref, S.txt); return; }
+      if (typeof v === 'number' || /^-?\d+$/.test(String(v))) out += cN(ref, ci === 11 || ci === 12 ? S.num : S.txtC, Number(v));
+      else out += cS(ref, S.txt, String(v));
+    });
+    out += '</row>';
+  });
+  const cols = '<cols><col min="1" max="1" width="6.5" customWidth="1"/><col min="2" max="3" width="4.5" customWidth="1"/>' +
+    '<col min="4" max="4" width="11" customWidth="1"/><col min="5" max="5" width="8" customWidth="1"/>' +
+    '<col min="6" max="9" width="8.5" customWidth="1"/><col min="10" max="10" width="30" customWidth="1"/>' +
+    '<col min="11" max="11" width="13" customWidth="1"/><col min="12" max="13" width="14" customWidth="1"/>' +
+    '<col min="14" max="14" width="10" customWidth="1"/><col min="15" max="15" width="9" customWidth="1"/>' +
+    '<col min="16" max="17" width="8.5" customWidth="1"/><col min="18" max="18" width="13" customWidth="1"/></cols>';
+  return sheetWrap('A1:R' + (list.length + 1), cols, out, { landscape: true });
+}
+
+/* ---------- 18. 저장 ---------- */
+function buildAggMap() {
+  const y = storeYear();
+  const qs = [1, 2, 3, 4].filter(q => snapOf(y, q));
+  if (!qs.length) return null;
+  const map = AGGMAP ? AGGMAP : newWorkbookMap(y + '년' + QUARTER[qs[0]].label);
+  const r = injectStyles(new TextDecoder('utf-8').decode(map['xl/styles.xml']));
+  map['xl/styles.xml'] = bytes(r.xml);
+  qs.forEach(q => {
+    const s = snapOf(y, q);
+    upsertSheet(map, y + '년' + QUARTER[q].label, buildAggSheetXml(s.rows, r.S, s));
+  });
+  return { map, sheets: qs.map(q => y + '년' + QUARTER[q].label), file: AGGMAP ? AGGNAME : '보험매출집계_' + y + '년.xlsx' };
+}
+function buildUpMap() {
+  const y = storeYear(), s = snapOf(y, SQ);
+  if (!s) return null;
+  const map = newWorkbookMap('매출자료 & 매입자료');
+  const r = injectStyles(new TextDecoder('utf-8').decode(map['xl/styles.xml']));
+  map['xl/styles.xml'] = bytes(r.xml);
+  const list = uploadRowsFrom(s);
+  upsertSheet(map, '매출자료 & 매입자료', buildUploadSheetXml(list, r.S));
+  return { map, list, file: '매입매출전표 입력 엑셀 업로드_' + y + '년' + QUARTER[SQ].label + '.xlsx' };
+}
+async function saveAgg() {
+  if (ST && isDirty()) storeSave(true);
+  const b = buildAggMap();
+  if (!b) { alert('보관함에 저장된 분기가 없습니다.\n파일을 올려 검토한 뒤 [이 분기 저장 / 업데이트]를 누르세요.'); return; }
+  await saveMap(b.map, b.file);
+  $('#saveMsg').textContent = '저장했습니다 — ' + b.file + ' (시트 ' + b.sheets.length + '개: ' + b.sheets.join(', ') + ')';
+  render();
+}
+async function saveUp() {
+  if (ST && +$('#cYear').value === +storeYear() && +$('#cQ').value === SQ && isDirty()) storeSave(true);
+  const b = buildUpMap();
+  if (!b) { alert(storeYear() + '년 ' + SQ + '분기가 보관함에 없습니다.\n2번 보관함에서 분기를 고르거나 먼저 저장하세요.'); return; }
+  await saveMap(b.map, b.file);
+  const cash = (snapOf(storeYear(), SQ).cash || []).filter(c => c.amount > 0).length;
+  $('#saveMsg').textContent = '저장했습니다 — ' + b.file + ' (' + b.list.length + '줄: 보험매출 ' + (b.list.length - cash) + ' + 현금매출 ' + cash + ')';
+  render();
+}
+
+/* ---------- 19. 파일 입력 ---------- */
+let LASTBOOK = null;
+function isAggFile(book) {
+  return book.sheets.some(s => /\d\s*기\s*(예정|확정)/.test(s.name)) ||
+    book.sheets.some(s => String(valOf(s, 1, 1) || valOf(s, 2, 1) || '').indexOf('보험금 매출 내역') >= 0);
+}
+async function handleFiles(fl) {
+  for (const f of fl) {
+    if (!/\.xlsx$/i.test(f.name)) continue;
+    const buf = await f.arrayBuffer();
+    let book;
+    try { book = await readXlsx(buf); }
+    catch (e) { alert(f.name + ' : 파일을 읽지 못했습니다.\n' + e.message); continue; }
+    if (isAggFile(book)) { AGGMAP = await xlsxToMap(buf); AGGNAME = f.name; addFileRow(f.name, '집계 파일', true); }
+    else { addFileRow(f.name, '보험금매출', false); await runAnalyze(book); }
+  }
+}
+function addFileRow(name, tag, isAgg) {
+  const d = document.createElement('div');
+  d.className = 'filerow';
+  d.innerHTML = '<span class="tag' + (isAgg ? ' agg' : '') + '">' + tag + '</span><span>' + esc(name) + '</span>';
+  $('#files').appendChild(d);
+}
+async function runAnalyze(book) {
+  if (ST && isDirty() && !confirm('현재 열려 있는 분기에 저장하지 않은 변경이 있습니다.\n새 파일을 열까요?')) return;
+  LASTBOOK = book;
+  let st;
+  try { st = analyze(book); }
+  catch (e) { alert('분석 실패: ' + e.message); return; }
+  clearState();
+  ST = st;
+  ST.refunds.forEach(x => { if (x.auto) REFON.add(refKey(x)); });
+  if (ST.year) $('#cYear').value = ST.year;
+  if (ST.quarter) $('#cQ').value = ST.quarter;
+  if (CFG.company && !$('#cName').value) $('#cName').value = CFG.company;
+  $('#sYear').value = $('#cYear').value; SQ = +$('#cQ').value;
+  syncDate();
+  render();
+}
+function reanalyze() { if (LASTBOOK) runAnalyze(LASTBOOK); else render(); }
+function syncDate() {
+  const Y = +$('#cYear').value, M = QUARTER[+$('#cQ').value].m[0];
+  $('#cDate').value = Y + '-' + String(M).padStart(2, '0') + '-01';
+}
+
+/* ---------- 20. 초기화 ---------- */
+(function init() {
+  const d = new Date();
+  $('#today').textContent = d.getFullYear() + '년 ' + (d.getMonth() + 1) + '월 ' + d.getDate() + '일';
+  $('#cYear').value = d.getFullYear();
+  $('#sYear').value = d.getFullYear();
+  SQ = Math.floor(d.getMonth() / 3) + 1;
+  $('#cQ').value = SQ;
+  if (CFG.company) $('#cName').value = CFG.company;
+  syncDate();
+
+  const drop = $('#drop'), fi = $('#fi');
+  drop.onclick = () => fi.click();
+  fi.onchange = () => handleFiles(fi.files);
+  ['dragenter', 'dragover'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', ev => handleFiles(ev.dataTransfer.files));
+
+  $('#cQ').onchange = () => { SQ = +$('#cQ').value; $('#sYear').value = $('#cYear').value; syncDate(); render(); };
+  $('#cYear').onchange = () => { $('#sYear').value = $('#cYear').value; syncDate(); render(); };
+  $('#cName').onchange = () => { CFG.company = $('#cName').value; saveCfg(); render(); };
+  ['#cDate', '#cInOut', '#cType', '#cAcc', '#cAcc2', '#cItem1', '#cItem2'].forEach(s => { const e = $(s); if (e) e.onchange = () => render(); });
+  $('#sYear').onchange = () => renderStore();
+
+  $('#bAddIns').onclick = () => {
+    const nm = prompt('보험사명'); if (!nm) return;
+    CFG.ins.push({ name: nm, code: prompt('거래처코드 (위하고)', '') || '', isNew: true }); saveCfg(); render();
+  };
+  $('#bReset').onclick = () => {
+    if (!confirm('보험사 목록과 별칭을 기본값으로 되돌립니다. (보관함 내용은 그대로 남습니다)')) return;
+    localStorage.removeItem(LS); CFG = loadCfg(); reanalyze();
+  };
+  const addAlias = (kind) => {
+    const key = prompt(kind === 'b' ? '적요 접두어 (예: 한화캐롯)' : '의뢰인/수취인명 (원본 파일에 적힌 그대로)');
+    if (!key) return;
+    (kind === 'b' ? CFG.bigo : CFG.name).push([key, CFG.ins[0] ? CFG.ins[0].name : '']);
+    saveCfg(); reanalyze();
+    alert('추가했습니다. "→ 보험사" 칸에서 보험사를 지정하세요.');
+  };
+  $('#bAddBigo').onclick = () => addAlias('b');
+  $('#bAddName').onclick = () => addAlias('n');
+
+  $('#bTaxAdd').onclick = () => {
+    if (!ST) { alert('먼저 분기를 열어 주세요.'); return; }
+    TAXMAN.push({ id: nid(), on: true, insurer: '', amount: 0, dateTxt: '', corp: '', memo: '', note: '' });
+    render();
+  };
+  $('#bTaxCarry').onclick = () => { if (!ST) { alert('먼저 분기를 열어 주세요.'); return; } loadCarry(); };
+  $('#bRefAdd').onclick = () => {
+    if (!ST) { alert('먼저 분기를 열어 주세요.'); return; }
+    REFMAN.push({ id: nid(), on: true, insurer: '', amount: 0, memo: '', note: '' });
+    render();
+  };
+
+  $('#bStoreSave').onclick = () => { if (storeSave()) render(); };
+  $('#bStoreDel').onclick = () => {
+    const y = storeYear();
+    if (!snapOf(y, SQ)) { alert('삭제할 내용이 없습니다.'); return; }
+    if (!confirm(y + '년 ' + SQ + '분기 보관 내용을 삭제할까요?')) return;
+    delete STORE[y][String(SQ)];
+    if (!Object.keys(STORE[y]).length) delete STORE[y];
+    saveStore();
+    if (ST && +$('#cYear').value === +y && +$('#cQ').value === SQ) clearState();
+    render();
+  };
+  $('#bAgg').onclick = () => saveAgg().catch(e => alert('저장 실패: ' + e.message));
+  $('#bUp').onclick = () => saveUp().catch(e => alert('저장 실패: ' + e.message));
+
+  render();
+  if (typeof DecompressionStream === 'undefined' || typeof CompressionStream === 'undefined')
+    alert('이 브라우저는 지원되지 않습니다. Chrome 또는 Edge 최신 버전에서 열어 주세요.');
+})();
+
+</script>
+</body>
+</html>
